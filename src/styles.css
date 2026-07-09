@@ -246,10 +246,45 @@ p {
 }
 
 .gallery-stack {
-  display: block;
+  display: none;
   width: min(100%, 380px);
   height: clamp(320px, 48vw, 500px);
   margin: 0 auto;
+}
+
+.gallery-masonry {
+  columns: 3 260px;
+  column-gap: 18px;
+}
+
+.gallery-masonry-card {
+  display: block;
+  break-inside: avoid;
+  overflow: hidden;
+  margin: 0 0 18px;
+  border-radius: 8px;
+  background: #111;
+}
+
+.gallery-masonry-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.gallery-masonry-card:nth-child(3n + 1) img {
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.gallery-masonry-card:nth-child(3n + 2) img {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.gallery-masonry-card:nth-child(3n) img {
+  aspect-ratio: 5 / 4;
+  object-fit: cover;
 }
 
 .stack-root {
@@ -1370,9 +1405,14 @@ p {
   }
 
   .gallery-stack {
+    display: block;
     height: clamp(260px, 82vw, 420px);
     margin: 4px auto 0;
     width: min(100%, 340px);
+  }
+
+  .gallery-masonry {
+    display: none;
   }
 
   .form-panel,

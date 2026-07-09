@@ -45,6 +45,17 @@ export default function HomePage() {
       </div>
     ));
   }, [galleryImages]);
+  const galleryMasonryCards = useMemo(() => {
+    if (galleryImages.length === 0) {
+      return [];
+    }
+
+    return galleryImages.map((image) => (
+      <figure key={image.id} className="gallery-masonry-card">
+        <img src={image.src} alt={image.alt} loading="lazy" />
+      </figure>
+    ));
+  }, [galleryImages]);
 
   const bookingForm = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
@@ -113,15 +124,18 @@ export default function HomePage() {
           <h2>Unsere Arbeiten – Präzision, Stil und perfekte Ergebnisse</h2>
         </div>
         {galleryStackCards.length > 0 ? (
-          <div className="gallery-stack">
-            <Stack
-              cards={galleryStackCards}
-              randomRotation
-              sensitivity={70}
-              mobileBreakpoint={561}
-              animationConfig={{ stiffness: 260, damping: 24 }}
-            />
-          </div>
+          <>
+            <div className="gallery-masonry">{galleryMasonryCards}</div>
+            <div className="gallery-stack">
+              <Stack
+                cards={galleryStackCards}
+                randomRotation
+                sensitivity={70}
+                mobileBreakpoint={561}
+                animationConfig={{ stiffness: 260, damping: 24 }}
+              />
+            </div>
+          </>
         ) : null}
       </section>
 
