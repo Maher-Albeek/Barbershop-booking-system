@@ -1,30 +1,24 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, ChevronLeft, ChevronRight, Download, ImagePlus, LogOut, Save, Trash2 } from "lucide-react";
 import {
   addGalleryImage,
-  adminEmail,
-  adminPassword,
   blockSlotRange,
   convertImageFileToAvif,
   defaultHeroImage,
   deleteGalleryImage,
   deleteHeroImage,
   formatGermanDate,
-  getAdminProfile,
   getBlockEndTimes,
   getBookings,
   getGalleryImages,
   getHeroImage,
   getSlots,
   getWorkingTimes,
-  isAdminAuthenticated,
-  loginAdmin,
-  logoutAdmin,
   saveHeroImage,
   unblockSlot,
-  updateAdminProfile,
 } from "../lib/storage";
+import { getAdminSession, loginAdmin, logoutAdmin, updateAdminProfile } from "../lib/auth";
 import type { AppointmentSlot, Booking } from "../lib/types";
 
 type AdminSection = "slots" | "gallery" | "profile";
@@ -191,7 +185,8 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export default function AdminPage() {
   const queryClient = useQueryClient();
-  const [authenticated, setAuthenticated] = useState(isAdminAuthenticated);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
   const [activeSection, setActiveSection] = useState<AdminSection>("slots");
   const [loginError, setLoginError] = useState("");
   const [blockError, setBlockError] = useState("");
@@ -199,7 +194,7 @@ export default function AdminPage() {
   const [profileMessage, setProfileMessage] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileForm, setProfileForm] = useState(() => ({
-    email: getAdminProfile().email,
+    email: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
@@ -268,6 +263,31 @@ export default function AdminPage() {
   ];
   const activeSectionTitle = adminSections.find((section) => section.id === activeSection)?.label ?? "Slots";
 
+  useEffect(() => {
+    let active = true;
+
+    getAdminSession()
+      .then((session) => {
+        if (!active) return;
+        setAuthenticated(session.authenticated);
+        setProfileForm((current) => ({
+          ...current,
+          email: session.email ?? "",
+        }));
+      })
+      .catch(() => {
+        if (!active) return;
+        setAuthenticated(false);
+      })
+      .finally(() => {
+        if (active) setAuthLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   function updateBlockedListDate(date: string) {
     const selectedDate = new Date(`${date}T12:00:00`);
     setBlockedListDate(date);
@@ -298,19 +318,24 @@ export default function AdminPage() {
     queryClient.invalidateQueries({ queryKey: ["slots"] });
   }
 
-  function handleLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const email = String(data.get("email"));
     const password = String(data.get("password"));
-    const valid = loginAdmin(email, password);
-    setAuthenticated(valid);
-    const profile = getAdminProfile();
-    const usesDefaultLogin = profile.email === adminEmail && profile.password === adminPassword;
-    setLoginError(valid ? "" : usesDefaultLogin ? `Login fehlgeschlagen. Demo: ${adminEmail} / ${adminPassword}` : "Login fehlgeschlagen.");
+    setLoginError("");
+
+    try {
+      const profile = await loginAdmin(email, password);
+      setAuthenticated(true);
+      setProfileForm((current) => ({ ...current, email: profile.email }));
+    } catch (error) {
+      setAuthenticated(false);
+      setLoginError(error instanceof Error ? error.message : "Login fehlgeschlagen.");
+    }
   }
 
-  function saveProfile(event: FormEvent<HTMLFormElement>) {
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setProfileMessage("");
     setProfileError("");
@@ -321,7 +346,7 @@ export default function AdminPage() {
     }
 
     try {
-      const nextProfile = updateAdminProfile(profileForm);
+      const nextProfile = await updateAdminProfile(profileForm);
       setProfileForm({
         email: nextProfile.email,
         currentPassword: "",
@@ -431,6 +456,17 @@ export default function AdminPage() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <section className="section admin-login">
+        <div className="form-panel login-panel">
+          <p className="eyebrow">Admin Login</p>
+          <h1>Session wird geprueft</h1>
+        </div>
+      </section>
+    );
+  }
+
   if (!authenticated) {
     return (
       <section className="section admin-login">
@@ -439,11 +475,11 @@ export default function AdminPage() {
           <h1>Geschuetzter Bereich</h1>
           <label>
             Email
-            <input name="email" type="email" defaultValue={adminEmail} />
+            <input name="email" type="email" autoComplete="username" />
           </label>
           <label>
             Password
-            <input name="password" type="password" defaultValue={adminPassword} />
+            <input name="password" type="password" autoComplete="current-password" />
           </label>
           <button type="submit">Login</button>
           {loginError && <p className="error-message">{loginError}</p>}
@@ -463,7 +499,7 @@ export default function AdminPage() {
           type="button"
           className="secondary-button"
           onClick={() => {
-            logoutAdmin();
+            void logoutAdmin();
             setAuthenticated(false);
           }}
         >
@@ -838,7 +874,7 @@ export default function AdminPage() {
         <div className="panel profile-help-panel">
           <h2>Login Daten</h2>
           <p>
-            Die neuen Admin-Daten werden in diesem Browser gespeichert und ersetzen die Standardwerte fuer den Login auf diesem Geraet.
+            Die Admin-Daten werden auf dem Server gespeichert und gelten nach dem Speichern fuer alle Geraete.
           </p>
           <p>Nach dem Speichern bleibt die aktuelle Sitzung aktiv.</p>
         </div>

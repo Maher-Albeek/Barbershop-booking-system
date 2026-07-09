@@ -2,12 +2,8 @@ import type { AppointmentSlot, Booking, SiteImage } from "./types";
 
 const slotsKey = "barber.slots";
 const bookingsKey = "barber.bookings";
-const authKey = "barber.admin.auth";
-const adminProfileKey = "barber.admin.profile";
 const galleryImagesKey = "barber.galleryImages";
 const heroImageKey = "barber.heroImage";
-export const adminEmail = import.meta.env.VITE_ADMIN_EMAIL ?? "admin@barber.local";
-export const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD ?? "Barber2026!";
 export const defaultHeroImage =
   "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1800&q=82";
 export const defaultGalleryImages: SiteImage[] = [
@@ -289,50 +285,6 @@ export function createBooking(input: Omit<Booking, "id" | "createdAt">) {
   };
   writeJson(bookingsKey, [...getBookings(), booking]);
   return booking;
-}
-
-export function isAdminAuthenticated() {
-  return localStorage.getItem(authKey) === "true";
-}
-
-export function getAdminProfile() {
-  return readJson(adminProfileKey, {
-    email: adminEmail,
-    password: adminPassword,
-  });
-}
-
-export function updateAdminProfile(input: { email: string; currentPassword: string; newPassword: string }) {
-  const profile = getAdminProfile();
-  const email = input.email.trim().toLowerCase();
-  const newPassword = input.newPassword.trim();
-
-  if (!email || !email.includes("@")) {
-    throw new Error("Bitte eine gueltige Email eingeben.");
-  }
-
-  if (input.currentPassword !== profile.password) {
-    throw new Error("Aktuelles Passwort ist falsch.");
-  }
-
-  if (newPassword.length < 8) {
-    throw new Error("Neues Passwort muss mindestens 8 Zeichen haben.");
-  }
-
-  const nextProfile = { email, password: newPassword };
-  writeJson(adminProfileKey, nextProfile);
-  return nextProfile;
-}
-
-export function loginAdmin(email: string, password: string) {
-  const profile = getAdminProfile();
-  const isValid = email.trim().toLowerCase() === profile.email && password === profile.password;
-  if (isValid) localStorage.setItem(authKey, "true");
-  return isValid;
-}
-
-export function logoutAdmin() {
-  localStorage.removeItem(authKey);
 }
 
 export function formatGermanDate(date: string, time?: string) {
