@@ -245,44 +245,59 @@ p {
   align-items: start;
 }
 
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+.gallery-stack {
+  display: block;
+  width: min(100%, 380px);
+  height: clamp(320px, 48vw, 500px);
+  margin: 0 auto;
 }
 
-.gallery-item {
+.stack-root {
   position: relative;
-  aspect-ratio: 3 / 4;
+  width: 100%;
+  height: 100%;
+}
+
+.stack-rotate-card {
+  position: absolute;
+  inset: 0;
+}
+
+.stack-rotate-card--click {
+  cursor: pointer;
+}
+
+.stack-rotate-card--drag {
+  cursor: grab;
+}
+
+.stack-rotate-card--drag:active {
+  cursor: grabbing;
+}
+
+.stack-card {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.gallery-stack-card {
+  display: block;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   border: 0;
   border-radius: 8px;
   padding: 0;
   background: #111;
-  cursor: pointer;
 }
 
-.gallery-item img {
+.gallery-stack-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 180ms ease;
-}
-
-.gallery-item:hover img {
-  transform: scale(1.04);
-}
-
-.gallery-item span {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  padding: 7px 9px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink);
-  font-weight: 800;
-  max-width: calc(100% - 24px);
+  pointer-events: none;
 }
 
 .form-panel,
@@ -762,37 +777,6 @@ p {
 
 .cookie-withdraw-copy {
   font-size: 0.9rem;
-}
-
-.lightbox {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: grid;
-  place-items: center;
-  padding: 28px;
-  background: rgba(0, 0, 0, 0.84);
-}
-
-.lightbox img {
-  max-width: min(100%, 980px);
-  max-height: 84vh;
-  border-radius: 8px;
-  object-fit: contain;
-}
-
-.lightbox button {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: 50%;
-  background: #fff;
-  font-size: 2rem;
-  line-height: 1;
-  cursor: pointer;
 }
 
 .admin-login {
@@ -1312,10 +1296,6 @@ p {
     max-width: none;
   }
 
-  .gallery-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .admin-grid + .admin-grid {
     margin-top: 34px;
   }
@@ -1323,7 +1303,8 @@ p {
 
 @media (max-width: 560px) {
   .site-header {
-    position: static;
+    position: relative;
+    z-index: 300;
     min-height: 0;
     padding: 14px;
   }
@@ -1388,13 +1369,10 @@ p {
     text-align: left;
   }
 
-  .gallery-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .gallery-item {
-    aspect-ratio: 16 / 11;
+  .gallery-stack {
+    height: clamp(260px, 82vw, 420px);
+    margin: 4px auto 0;
+    width: min(100%, 340px);
   }
 
   .form-panel,
@@ -1508,14 +1486,6 @@ p {
     justify-self: start;
   }
 
-  .lightbox {
-    padding: 14px;
-  }
-
-  .lightbox button {
-    top: 10px;
-    right: 10px;
-  }
 }
 
 @media (prefers-color-scheme: dark) {

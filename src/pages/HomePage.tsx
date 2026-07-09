@@ -4,8 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, ShieldCheck } from "lucide-react";
+import Stack from "../components/Stack";
 import { createBooking, defaultHeroImage, formatGermanDate, getGalleryImages, getHeroImage, getSlots } from "../lib/storage";
-import type { SiteImage } from "../lib/types";
 
 const bookingSchema = z.object({
   customerName: z.string().min(2, "Bitte vollständigen Namen eingeben."),
@@ -20,7 +20,6 @@ type BookingForm = z.infer<typeof bookingSchema>;
 
 export default function HomePage() {
   const queryClient = useQueryClient();
-  const [selectedImage, setSelectedImage] = useState<SiteImage | null>(null);
   const [bookingNotice, setBookingNotice] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const { data: slots = [] } = useQuery({ queryKey: ["slots"], queryFn: getSlots });
@@ -35,6 +34,17 @@ export default function HomePage() {
     () => availableSlots.filter((slot) => slot.date === selectedDate),
     [availableSlots, selectedDate],
   );
+  const galleryStackCards = useMemo(() => {
+    if (galleryImages.length === 0) {
+      return [];
+    }
+
+    return galleryImages.map((image) => (
+      <div key={image.id} className="gallery-stack-card">
+        <img src={image.src} alt={image.alt} loading="lazy" />
+      </div>
+    ));
+  }, [galleryImages]);
 
   const bookingForm = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
@@ -102,13 +112,17 @@ export default function HomePage() {
           <p className="eyebrow">Galerie</p>
           <h2>Unsere Arbeiten – Präzision, Stil und perfekte Ergebnisse</h2>
         </div>
-        <div className="gallery-grid">
-          {galleryImages.map((image) => (
-            <button key={image.id} type="button" className="gallery-item" onClick={() => setSelectedImage(image)}>
-              <img src={image.src} alt={image.alt} loading="lazy" />
-            </button>
-          ))}
-        </div>
+        {galleryStackCards.length > 0 ? (
+          <div className="gallery-stack">
+            <Stack
+              cards={galleryStackCards}
+              randomRotation
+              sensitivity={70}
+              mobileBreakpoint={561}
+              animationConfig={{ stiffness: 260, damping: 24 }}
+            />
+          </div>
+        ) : null}
       </section>
 
       <section className="section booking-layout" id="booking">
@@ -185,14 +199,6 @@ export default function HomePage() {
         </form>
       </section>
 
-      {selectedImage && (
-        <div className="lightbox" role="dialog" aria-modal="true" onClick={() => setSelectedImage(null)}>
-          <button type="button" aria-label="Lightbox schließen">
-            ×
-          </button>
-          <img src={selectedImage.src} alt={selectedImage.alt} />
-        </div>
-      )}
     </>
   );
 }
