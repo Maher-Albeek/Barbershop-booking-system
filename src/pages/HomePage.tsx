@@ -79,14 +79,9 @@ export default function HomePage() {
     <>
       <section className="hero" id="home">
         <div className="hero-content">
-          <p className="eyebrow">Berlin Barber Studio</p>
-          <h1>Modern Haircuts & Professional Barber Service</h1>
-          <p>
-            Wähle direkt einen freien Termin in deutscher Ortszeit, bestätige den Datenschutz und erhalte eine
-            verbindliche Reservierung ohne Wartezeit.
-          </p>
+          <h1>Adem</h1>
           <a className="primary-action" href="#booking">
-            Jetzt Termin buchen
+            Reservieren
           </a>
         </div>
       </section>
@@ -104,20 +99,6 @@ export default function HomePage() {
           <Mail size={22} />
           <span>info@barber-booking.de</span>
         </div>
-      </section>
-
-      <section className="section qr-section">
-        <div>
-          <p className="eyebrow">QR Code</p>
-          <h2>Schnell zum Termin</h2>
-          <p>Der QR Code öffnet die Website-URL und kann auf Flyern, Schaufenstern oder Visitenkarten genutzt werden.</p>
-        </div>
-        <img
-          src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https%3A%2F%2Fbarber-booking.example"
-          alt="QR Code zur Barber Booking Website"
-          width="180"
-          height="180"
-        />
       </section>
 
       <section className="section" id="gallery">
