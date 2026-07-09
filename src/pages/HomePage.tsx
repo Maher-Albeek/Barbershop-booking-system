@@ -68,9 +68,9 @@ export default function HomePage() {
     }
   }, [bookableDates, selectedDate]);
 
-  function reserveAppointment(data: BookingForm) {
+  async function reserveAppointment(data: BookingForm) {
     try {
-      const booking = createBooking({
+      const booking = await createBooking({
         slotId: data.slotId,
         customerName: data.customerName,
         customerEmail: data.customerEmail,

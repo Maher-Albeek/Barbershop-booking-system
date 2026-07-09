@@ -47,7 +47,7 @@ function getSessionSecret() {
   return secret;
 }
 
-async function redisCommand<T>(command: string, ...args: string[]) {
+export async function redisCommand<T>(command: string, ...args: string[]) {
   const { url, token } = getRedisConfig();
   const response = await fetch(url, {
     method: "POST",

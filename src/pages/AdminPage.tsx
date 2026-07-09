@@ -311,8 +311,10 @@ export default function AdminPage() {
     setConfirmDeleteOpen(false);
   }
 
-  function deleteSelectedBlockedSlots() {
-    selectedBlockedSlots.forEach((slot) => unblockSlot(slot.id));
+  async function deleteSelectedBlockedSlots() {
+    for (const slot of selectedBlockedSlots) {
+      await unblockSlot(slot.id);
+    }
     setSelectedBlockedSlotIds([]);
     setConfirmDeleteOpen(false);
     queryClient.invalidateQueries({ queryKey: ["slots"] });
@@ -329,6 +331,10 @@ export default function AdminPage() {
       const profile = await loginAdmin(email, password);
       setAuthenticated(true);
       setProfileForm((current) => ({ ...current, email: profile.email }));
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["slots"] });
+      queryClient.invalidateQueries({ queryKey: ["galleryImages"] });
+      queryClient.invalidateQueries({ queryKey: ["heroImage"] });
     } catch (error) {
       setAuthenticated(false);
       setLoginError(error instanceof Error ? error.message : "Login fehlgeschlagen.");
@@ -359,7 +365,7 @@ export default function AdminPage() {
     }
   }
 
-  function saveBlockedTime(event: FormEvent<HTMLFormElement>) {
+  async function saveBlockedTime(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const startMinutes = timeToMinutes(blockedTimeForm.startTime);
     const endMinutes = timeToMinutes(blockedTimeForm.endTime);
@@ -397,7 +403,7 @@ export default function AdminPage() {
       return;
     }
 
-    const blockedRange = blockSlotRange(blockedTimeForm);
+    const blockedRange = await blockSlotRange(blockedTimeForm);
     if (blockedRange.length === 0) {
       setBlockError("Fuer dieses Datum und diese Uhrzeit gibt es keine blockierbaren Termine.");
       return;
@@ -422,7 +428,7 @@ export default function AdminPage() {
       setImageMessage("");
       const image = await convertImageFileForStorage(file);
       const fallbackNote = image.formatLabel === "AVIF" ? "" : ` (${image.formatLabel}, weil AVIF hier nicht unterstuetzt wird)`;
-      saveHeroImage({ src: image.src, alt: "Barbershop Hero" });
+      await saveHeroImage({ src: image.src, alt: "Barbershop Hero" });
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["heroImage"] });
       setImageMessage(`Hero-Bild wurde gespeichert${fallbackNote}.`);
@@ -447,7 +453,7 @@ export default function AdminPage() {
       setImageMessage("");
       const image = await convertImageFileForStorage(file, 1200);
       const fallbackNote = image.formatLabel === "AVIF" ? "" : ` (${image.formatLabel}, weil AVIF hier nicht unterstuetzt wird)`;
-      addGalleryImage({ src: image.src, alt, label });
+      await addGalleryImage({ src: image.src, alt, label });
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["galleryImages"] });
       setImageMessage(`Galerie-Bild wurde gespeichert${fallbackNote}.`);
@@ -769,8 +775,8 @@ export default function AdminPage() {
             <button
               type="button"
               className="secondary-button"
-              onClick={() => {
-                deleteHeroImage();
+              onClick={async () => {
+                await deleteHeroImage();
                 queryClient.invalidateQueries({ queryKey: ["heroImage"] });
               }}
             >
@@ -813,8 +819,8 @@ export default function AdminPage() {
                 <button
                   type="button"
                   aria-label="Galerie-Bild loeschen"
-                  onClick={() => {
-                    deleteGalleryImage(image.id);
+                  onClick={async () => {
+                    await deleteGalleryImage(image.id);
                     queryClient.invalidateQueries({ queryKey: ["galleryImages"] });
                   }}
                 >

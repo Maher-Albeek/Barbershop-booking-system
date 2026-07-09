@@ -1,9 +1,5 @@
 import type { AppointmentSlot, Booking, SiteImage } from "./types";
 
-const slotsKey = "barber.slots";
-const bookingsKey = "barber.bookings";
-const galleryImagesKey = "barber.galleryImages";
-const heroImageKey = "barber.heroImage";
 export const defaultHeroImage =
   "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1800&q=82";
 export const defaultGalleryImages: SiteImage[] = [
@@ -36,19 +32,23 @@ export const defaultGalleryImages: SiteImage[] = [
     createdAt: "default",
   },
 ];
-const workingTimes = [
-  "09:00",
-  "10:00",
-  "11:00",
-  "12:00",
-  "13:00",
-  "14:00",
-  "15:00",
-  "16:00",
-  "17:00",
-  "18:00",
-];
+
+const workingTimes = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 const closingTime = "19:00";
+
+type PublicSiteData = {
+  heroImage: SiteImage | null;
+  galleryImages: SiteImage[];
+  slots: AppointmentSlot[];
+};
+
+type AdminSiteData = PublicSiteData & {
+  bookings: Booking[];
+};
+
+type ChangedSlotsResponse = AdminSiteData & {
+  changedSlots: AppointmentSlot[];
+};
 
 export function getWorkingTimes() {
   return workingTimes;
@@ -58,41 +58,40 @@ export function getBlockEndTimes() {
   return [...workingTimes.slice(1), closingTime];
 }
 
-function formatDate(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function getTodayKey() {
-  return formatDate(new Date());
-}
-
-function getAvailabilityEndDate() {
-  const date = new Date();
-  date.setMonth(date.getMonth() + 4, 0);
-  return date;
-}
-
-function getSlotId(date: string, startTime: string) {
-  return `${date}-${startTime}`;
-}
-
 function timeToMinutes(time: string) {
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 }
 
-function readJson<T>(key: string, fallback: T): T {
-  const stored = localStorage.getItem(key);
-  if (!stored) return fallback;
-  try {
-    return JSON.parse(stored) as T;
-  } catch {
-    return fallback;
+async function apiRequest<T>(path: string, init?: RequestInit) {
+  const response = await fetch(path, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+    ...init,
+  });
+
+  if (!response.ok) {
+    let message = "Daten konnten nicht geladen werden.";
+    try {
+      const body = (await response.json()) as { message?: string };
+      message = body.message || message;
+    } catch {
+      // Keep the generic message when the server returns no JSON body.
+    }
+    throw new Error(message);
   }
+
+  return (await response.json()) as T;
 }
 
-function writeJson<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value));
+function withFallbackGallery<T extends PublicSiteData>(data: T): T {
+  return {
+    ...data,
+    galleryImages: data.galleryImages.length > 0 ? data.galleryImages : defaultGalleryImages,
+  };
 }
 
 function readFileAsDataUrl(file: File) {
@@ -169,146 +168,90 @@ export async function convertImageFileForStorage(file: File, maxSize = 1800): Pr
   throw new Error("Bild konnte in diesem Browser nicht gespeichert werden.");
 }
 
-export function getGalleryImages() {
-  return readJson<SiteImage[]>(galleryImagesKey, defaultGalleryImages);
-}
-
-export function addGalleryImage(image: Omit<SiteImage, "id" | "createdAt">) {
-  const nextImage: SiteImage = {
-    ...image,
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-  };
-  writeJson(galleryImagesKey, [...getGalleryImages(), nextImage]);
-  return nextImage;
-}
-
-export function deleteGalleryImage(id: string) {
-  writeJson(
-    galleryImagesKey,
-    getGalleryImages().filter((image) => image.id !== id),
-  );
-}
-
-export function getHeroImage() {
-  return readJson<SiteImage | null>(heroImageKey, null);
-}
-
-export function saveHeroImage(image: Omit<SiteImage, "id" | "createdAt" | "label">) {
-  const nextImage: SiteImage = {
-    ...image,
-    id: crypto.randomUUID(),
-    label: "Hero",
-    createdAt: new Date().toISOString(),
-  };
-  writeJson(heroImageKey, nextImage);
-  return nextImage;
-}
-
-export function deleteHeroImage() {
-  localStorage.removeItem(heroImageKey);
-}
-
-export function getSlots() {
-  const persistedSlots = readJson<AppointmentSlot[]>(slotsKey, []);
-  const persistedByDateTime = new Map(
-    persistedSlots
-      .filter((slot) => slot.status === "booked" || slot.status === "blocked")
-      .map((slot) => [getSlotId(slot.date, slot.startTime), slot]),
-  );
-  const slots: AppointmentSlot[] = [];
-  const todayKey = getTodayKey();
-  const endDate = getAvailabilityEndDate();
-
-  for (const date = new Date(`${todayKey}T12:00:00`); date <= endDate; date.setDate(date.getDate() + 1)) {
-    const day = date.getDay();
-    if (day === 0 || day === 6) continue;
-
-    const dateKey = formatDate(date);
-    for (const startTime of workingTimes) {
-      const slotId = getSlotId(dateKey, startTime);
-      const persistedSlot = persistedByDateTime.get(slotId);
-      slots.push(
-        persistedSlot ?? {
-          id: slotId,
-          date: dateKey,
-          startTime,
-          duration: 60,
-          service: "Termin",
-          status: "available",
-        },
-      );
-    }
+export async function getPublicSiteData() {
+  try {
+    return withFallbackGallery(await apiRequest<PublicSiteData>("/api/site-data"));
+  } catch {
+    return {
+      heroImage: null,
+      galleryImages: defaultGalleryImages,
+      slots: [],
+    };
   }
-
-  return slots;
 }
 
-export function saveSlots(slots: AppointmentSlot[]) {
-  writeJson(
-    slotsKey,
-    slots.filter((slot) => slot.status === "booked" || slot.status === "blocked"),
-  );
+export async function getAdminSiteData() {
+  return withFallbackGallery(await apiRequest<AdminSiteData>("/api/admin/site-data"));
 }
 
-export function blockSlot(slot: Pick<AppointmentSlot, "date" | "startTime"> & { blockedReason?: string }) {
-  const slots = getSlots();
-  const targetId = getSlotId(slot.date, slot.startTime);
-  const existingSlot = slots.find((item) => item.id === targetId);
-  if (!existingSlot || existingSlot.status === "booked") return existingSlot;
-
-  const blockedSlot: AppointmentSlot = {
-    ...existingSlot,
-    status: "blocked",
-    blockedReason: slot.blockedReason?.trim() || undefined,
-  };
-  saveSlots(slots.map((item) => (item.id === targetId ? blockedSlot : item)));
-  return blockedSlot;
+export async function getGalleryImages() {
+  return (await getPublicSiteData()).galleryImages;
 }
 
-export function blockSlotRange(slot: Pick<AppointmentSlot, "date" | "startTime"> & { endTime: string; blockedReason?: string }) {
+export async function addGalleryImage(image: Omit<SiteImage, "id" | "createdAt">) {
+  return apiRequest<AdminSiteData>("/api/admin/site-data", {
+    method: "PATCH",
+    body: JSON.stringify({ action: "addGalleryImage", image }),
+  });
+}
+
+export async function deleteGalleryImage(id: string) {
+  return apiRequest<AdminSiteData>("/api/admin/site-data", {
+    method: "PATCH",
+    body: JSON.stringify({ action: "deleteGalleryImage", id }),
+  });
+}
+
+export async function getHeroImage() {
+  return (await getPublicSiteData()).heroImage;
+}
+
+export async function saveHeroImage(image: Omit<SiteImage, "id" | "createdAt" | "label">) {
+  return apiRequest<AdminSiteData>("/api/admin/site-data", {
+    method: "PATCH",
+    body: JSON.stringify({ action: "saveHeroImage", image }),
+  });
+}
+
+export async function deleteHeroImage() {
+  return apiRequest<AdminSiteData>("/api/admin/site-data", {
+    method: "PATCH",
+    body: JSON.stringify({ action: "deleteHeroImage" }),
+  });
+}
+
+export async function getSlots() {
+  return (await getPublicSiteData()).slots;
+}
+
+export async function blockSlotRange(slot: Pick<AppointmentSlot, "date" | "startTime"> & { endTime: string; blockedReason?: string }) {
   const startMinutes = timeToMinutes(slot.startTime);
   const endMinutes = timeToMinutes(slot.endTime);
   if (endMinutes <= startMinutes) return [];
 
-  const slots = getSlots();
-  const targetSlots = slots.filter(
-    (item) =>
-      item.date === slot.date &&
-      item.status !== "booked" &&
-      timeToMinutes(item.startTime) >= startMinutes &&
-      timeToMinutes(item.startTime) < endMinutes,
-  );
-  const targetIds = new Set(targetSlots.map((item) => item.id));
-  const blockedReason = slot.blockedReason?.trim() || undefined;
-  const nextSlots = slots.map((item) => (targetIds.has(item.id) ? { ...item, status: "blocked" as const, blockedReason } : item));
-  saveSlots(nextSlots);
-  return targetSlots;
+  const response = await apiRequest<ChangedSlotsResponse>("/api/admin/site-data", {
+    method: "PATCH",
+    body: JSON.stringify({ action: "blockSlotRange", slot }),
+  });
+  return response.changedSlots;
 }
 
-export function unblockSlot(id: string) {
-  saveSlots(getSlots().filter((slot) => slot.id !== id));
+export async function unblockSlot(id: string) {
+  return apiRequest<AdminSiteData>("/api/admin/site-data", {
+    method: "PATCH",
+    body: JSON.stringify({ action: "unblockSlot", id }),
+  });
 }
 
-export function getBookings() {
-  return readJson<Booking[]>(bookingsKey, []);
+export async function getBookings() {
+  return (await getAdminSiteData()).bookings;
 }
 
-export function createBooking(input: Omit<Booking, "id" | "createdAt">) {
-  const slots = getSlots();
-  const slot = slots.find((item) => item.id === input.slotId);
-  if (!slot || slot.status !== "available") {
-    throw new Error("Dieser Termin ist nicht mehr verfügbar.");
-  }
-
-  saveSlots(slots.map((item) => (item.id === input.slotId ? { ...item, status: "booked" } : item)));
-  const booking: Booking = {
-    ...input,
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-  };
-  writeJson(bookingsKey, [...getBookings(), booking]);
-  return booking;
+export async function createBooking(input: Omit<Booking, "id" | "createdAt">) {
+  return apiRequest<Booking>("/api/site-data", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function formatGermanDate(date: string, time?: string) {
