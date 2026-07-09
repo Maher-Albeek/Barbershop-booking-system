@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
+import { useCookieConsent } from "../useCookieConsent";
 
-export function Footer() {
+export const Footer = () => {
+  const { openSettingsModal } = useCookieConsent();
+
   return (
     <footer className="site-footer">
       <div>
@@ -11,10 +14,10 @@ export function Footer() {
         <a href="/#booking">Verfügbare Termine</a>
         <Link to="/datenschutz">Datenschutz</Link>
         <Link to="/impressum">Impressum</Link>
-        <button type="button" onClick={() => localStorage.removeItem("barber.cookie.notice")}>
-          Cookie Settings
+        <button type="button" onClick={openSettingsModal}>
+          Cookie-Einstellungen
         </button>
       </nav>
     </footer>
   );
-}
+};
