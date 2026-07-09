@@ -5,6 +5,8 @@ const bookingsKey = "barber.bookings";
 const authKey = "barber.admin.auth";
 const galleryImagesKey = "barber.galleryImages";
 const heroImageKey = "barber.heroImage";
+export const adminEmail = import.meta.env.VITE_ADMIN_EMAIL ?? "admin@barber.local";
+export const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD ?? "Barber2026!";
 export const defaultHeroImage =
   "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1800&q=82";
 export const defaultGalleryImages: SiteImage[] = [
@@ -228,7 +230,7 @@ export function saveSlots(slots: AppointmentSlot[]) {
   );
 }
 
-export function blockSlot(slot: Pick<AppointmentSlot, "date" | "startTime">) {
+export function blockSlot(slot: Pick<AppointmentSlot, "date" | "startTime"> & { blockedReason?: string }) {
   const slots = getSlots();
   const targetId = getSlotId(slot.date, slot.startTime);
   const existingSlot = slots.find((item) => item.id === targetId);
@@ -237,12 +239,13 @@ export function blockSlot(slot: Pick<AppointmentSlot, "date" | "startTime">) {
   const blockedSlot: AppointmentSlot = {
     ...existingSlot,
     status: "blocked",
+    blockedReason: slot.blockedReason?.trim() || undefined,
   };
   saveSlots(slots.map((item) => (item.id === targetId ? blockedSlot : item)));
   return blockedSlot;
 }
 
-export function blockSlotRange(slot: Pick<AppointmentSlot, "date" | "startTime"> & { endTime: string }) {
+export function blockSlotRange(slot: Pick<AppointmentSlot, "date" | "startTime"> & { endTime: string; blockedReason?: string }) {
   const startMinutes = timeToMinutes(slot.startTime);
   const endMinutes = timeToMinutes(slot.endTime);
   if (endMinutes <= startMinutes) return [];
@@ -256,7 +259,8 @@ export function blockSlotRange(slot: Pick<AppointmentSlot, "date" | "startTime">
       timeToMinutes(item.startTime) < endMinutes,
   );
   const targetIds = new Set(targetSlots.map((item) => item.id));
-  const nextSlots = slots.map((item) => (targetIds.has(item.id) ? { ...item, status: "blocked" as const } : item));
+  const blockedReason = slot.blockedReason?.trim() || undefined;
+  const nextSlots = slots.map((item) => (targetIds.has(item.id) ? { ...item, status: "blocked" as const, blockedReason } : item));
   saveSlots(nextSlots);
   return targetSlots;
 }
@@ -291,7 +295,7 @@ export function isAdminAuthenticated() {
 }
 
 export function loginAdmin(email: string, password: string) {
-  const isValid = email === "admin@barber.local" && password === "Barber2026!";
+  const isValid = email === adminEmail && password === adminPassword;
   if (isValid) localStorage.setItem(authKey, "true");
   return isValid;
 }

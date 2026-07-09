@@ -7,6 +7,7 @@ export type AppointmentSlot = {
   duration: number;
   service: string;
   status: SlotStatus;
+  blockedReason?: string;
 };
 
 export type Booking = {

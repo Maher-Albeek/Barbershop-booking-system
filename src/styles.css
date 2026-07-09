@@ -813,8 +813,46 @@ p {
   margin-bottom: 26px;
 }
 
+.admin-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 16px 45px rgba(37, 31, 21, 0.06);
+}
+
+.admin-section-nav button {
+  flex: 1 1 150px;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.admin-section-nav button:hover {
+  border-color: var(--line);
+  background: #fbfaf7;
+}
+
+.admin-section-nav button.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
 .admin-grid {
   margin-top: 22px;
+}
+
+.slots-overview-panel {
+  order: -1;
 }
 
 .table-list {
@@ -822,11 +860,33 @@ p {
   gap: 10px;
 }
 
-.blocked-date-filter {
-  display: grid;
-  gap: 7px;
-  margin: 18px 0 14px;
-  font-weight: 800;
+.panel-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.panel-heading-actions h2 {
+  min-width: 0;
+}
+
+.slot-status-dot {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+}
+
+.slot-status-dot-booked {
+  background: #1c64f2;
+  box-shadow: 0 0 0 4px rgba(28, 100, 242, 0.14);
+}
+
+.slot-status-dot-blocked {
+  background: #bd0101;
+  box-shadow: 0 0 0 4px rgba(189, 1, 1, 0.12);
 }
 
 .blocked-list-toolbar {
@@ -837,22 +897,6 @@ p {
   margin-bottom: 14px;
 }
 
-.blocked-calendar-wrap {
-  position: relative;
-}
-
-.blocked-calendar-selected {
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 12px;
-  border: 1px solid #cfc8ba;
-  border-radius: 8px;
-  background: #fff;
-  color: var(--ink);
-  cursor: pointer;
-}
-
-.blocked-calendar-selected,
 .blocked-calendar-header {
   display: flex;
   align-items: center;
@@ -871,6 +915,13 @@ p {
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+}
+
+.blocked-calendar-inline {
+  position: static;
+  width: 100%;
+  margin-top: 16px;
+  box-shadow: none;
 }
 
 .blocked-calendar-header {
@@ -949,13 +1000,83 @@ p {
 }
 
 .blocked-calendar-day.has-blocked-slots::after {
-  content: "";
+  content: none;
+}
+
+.calendar-day-markers {
   position: absolute;
+  left: 50%;
   bottom: 4px;
-  width: 6px;
-  height: 6px;
+  display: flex !important;
+  gap: 3px;
+  transform: translateX(-50%);
+}
+
+.calendar-marker {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
+}
+
+.calendar-marker-blocked {
   background: #bd0101;
+}
+
+.calendar-marker-booked {
+  background: #1c64f2;
+}
+
+.calendar-legend,
+.slot-day-heading,
+.slot-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.calendar-legend {
+  margin: 12px 0 16px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.slot-day-heading {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.slot-day-heading span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.slot-filter-tabs {
+  margin-bottom: 14px;
+}
+
+.slot-filter-tabs button {
+  flex: 1 1 120px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.slot-filter-tabs button.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
 }
 
 .blocked-calendar-day:disabled {
@@ -1269,12 +1390,14 @@ p {
   }
 
   .blocked-list-toolbar,
+  .panel-heading-actions,
   .delete-confirmation div {
     align-items: stretch;
     flex-direction: column;
   }
 
   .blocked-list-toolbar .danger-action,
+  .panel-heading-actions .secondary-button,
   .delete-confirmation button {
     width: 100%;
   }
@@ -1412,6 +1535,10 @@ p {
     background: #171512;
   }
 
+  .admin-section-nav button:hover {
+    background: #171512;
+  }
+
   .delete-confirmation {
     border-color: #7d2d2d;
     background: #2a1717;
@@ -1425,7 +1552,8 @@ p {
   .form-panel input,
   .form-panel select,
   .form-panel textarea,
-  .admin-media-form input {
+  .admin-media-form input,
+  .slot-filter-tabs button {
     border-color: #4a4239;
     background: #25221e;
     color: var(--ink);
@@ -1436,14 +1564,9 @@ p {
     background: #25221e;
   }
 
-  .blocked-calendar-selected {
-    border-color: #4a4239;
-    background: #25221e;
-    color: var(--ink);
-  }
-
   .blocked-calendar-header button:hover,
-  .blocked-calendar-day:hover {
+  .blocked-calendar-day:hover,
+  .slot-filter-tabs button:hover {
     background: #171512;
   }
 
