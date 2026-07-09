@@ -1,9 +1,60 @@
+import { del, put } from "@vercel/blob";
 import { getAdminSiteData, getStoredSiteData, saveStoredSiteData, type AppointmentSlot, type SiteImage } from "../_siteData.js";
 import { requireAdmin, sendError, type ApiRequest, type ApiResponse } from "../_auth.js";
 
 function timeToMinutes(time: string) {
   const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
+}
+
+function extensionFromMimeType(mimeType: string) {
+  if (mimeType === "image/avif") return "avif";
+  if (mimeType === "image/webp") return "webp";
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/jpeg") return "jpg";
+  return "bin";
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+}
+
+function dataUrlToBuffer(dataUrl: string) {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) throw new Error("Bilddaten sind ungueltig.");
+  return {
+    mimeType: match[1],
+    buffer: Buffer.from(match[2], "base64"),
+  };
+}
+
+async function uploadImage(image: { src: string; label?: string; alt?: string }, folder: "hero" | "gallery") {
+  const { mimeType, buffer } = dataUrlToBuffer(image.src);
+  const extension = extensionFromMimeType(mimeType);
+  const filename = `${folder}/${Date.now()}-${crypto.randomUUID()}-${slugify(image.label || image.alt || "image")}.${extension}`;
+  const blob = await put(filename, buffer, {
+    access: "public",
+    contentType: mimeType,
+  });
+  return {
+    url: blob.url,
+    pathname: blob.pathname,
+  };
+}
+
+async function deleteImageFile(image?: SiteImage | null) {
+  if (!image?.src || image.src.startsWith("data:")) return;
+  try {
+    await del(image.src);
+  } catch {
+    // Keep data cleanup moving if the file was already removed from blob storage.
+  }
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
@@ -38,8 +89,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     };
 
     if (body.action === "saveHeroImage" && body.image?.src) {
+      const uploadedImage = await uploadImage(body.image, "hero");
+      await deleteImageFile(data.heroImage);
       const heroImage: SiteImage = {
-        src: body.image.src,
+        src: uploadedImage.url,
+        pathname: uploadedImage.pathname,
         alt: body.image.alt || "Barbershop Hero",
         label: "Hero",
         id: crypto.randomUUID(),
@@ -51,14 +105,17 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     if (body.action === "deleteHeroImage") {
+      await deleteImageFile(data.heroImage);
       const nextData = await saveStoredSiteData({ ...data, heroImage: null });
       res.status(200).json(getAdminSiteData(nextData));
       return;
     }
 
     if (body.action === "addGalleryImage" && body.image?.src) {
+      const uploadedImage = await uploadImage(body.image, "gallery");
       const galleryImage: SiteImage = {
-        src: body.image.src,
+        src: uploadedImage.url,
+        pathname: uploadedImage.pathname,
         alt: body.image.alt || body.image.label || "Galerie",
         label: body.image.label || "Galerie",
         id: crypto.randomUUID(),
@@ -70,6 +127,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     if (body.action === "deleteGalleryImage" && body.id) {
+      const imageToDelete = data.galleryImages.find((image) => image.id === body.id);
+      await deleteImageFile(imageToDelete);
       const nextData = await saveStoredSiteData({
         ...data,
         galleryImages: data.galleryImages.filter((image) => image.id !== body.id),

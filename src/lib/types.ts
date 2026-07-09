@@ -23,6 +23,7 @@ export type Booking = {
 export type SiteImage = {
   id: string;
   src: string;
+  pathname?: string;
   alt: string;
   label: string;
   createdAt: string;
