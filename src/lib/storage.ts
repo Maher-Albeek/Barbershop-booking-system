@@ -113,23 +113,34 @@ function loadImage(src: string) {
   });
 }
 
-function canvasToAvif(canvas: HTMLCanvasElement) {
+type ConvertedImage = {
+  src: string;
+  formatLabel: "AVIF" | "WebP" | "JPEG";
+};
+
+const imageFormats: Array<{ mimeType: string; extension: string; formatLabel: ConvertedImage["formatLabel"]; quality: number }> = [
+  { mimeType: "image/avif", extension: "avif", formatLabel: "AVIF", quality: 0.82 },
+  { mimeType: "image/webp", extension: "webp", formatLabel: "WebP", quality: 0.86 },
+  { mimeType: "image/jpeg", extension: "jpg", formatLabel: "JPEG", quality: 0.88 },
+];
+
+function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string, quality: number) {
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (blob) => {
-        if (!blob || blob.type !== "image/avif") {
-          reject(new Error("AVIF-Konvertierung wird von diesem Browser nicht unterstuetzt."));
+        if (!blob || blob.type !== mimeType) {
+          reject(new Error(`${mimeType} wird von diesem Browser nicht unterstuetzt.`));
           return;
         }
         resolve(blob);
       },
-      "image/avif",
-      0.82,
+      mimeType,
+      quality,
     );
   });
 }
 
-export async function convertImageFileToAvif(file: File, maxSize = 1800) {
+export async function convertImageFileForStorage(file: File, maxSize = 1800): Promise<ConvertedImage> {
   const dataUrl = await readFileAsDataUrl(file);
   const image = await loadImage(dataUrl);
   const scale = Math.min(1, maxSize / Math.max(image.naturalWidth, image.naturalHeight));
@@ -141,8 +152,21 @@ export async function convertImageFileToAvif(file: File, maxSize = 1800) {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Bild konnte nicht konvertiert werden.");
   context.drawImage(image, 0, 0, width, height);
-  const avifBlob = await canvasToAvif(canvas);
-  return readFileAsDataUrl(new File([avifBlob], `${file.name.replace(/\.[^.]+$/, "")}.avif`, { type: "image/avif" }));
+
+  for (const format of imageFormats) {
+    try {
+      const blob = await canvasToBlob(canvas, format.mimeType, format.quality);
+      const storedFile = new File([blob], `${file.name.replace(/\.[^.]+$/, "")}.${format.extension}`, { type: format.mimeType });
+      return {
+        src: await readFileAsDataUrl(storedFile),
+        formatLabel: format.formatLabel,
+      };
+    } catch {
+      // Try the next browser-supported image encoder.
+    }
+  }
+
+  throw new Error("Bild konnte in diesem Browser nicht gespeichert werden.");
 }
 
 export function getGalleryImages() {

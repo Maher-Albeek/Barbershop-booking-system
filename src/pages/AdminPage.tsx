@@ -4,7 +4,7 @@ import { Ban, ChevronLeft, ChevronRight, Download, ImagePlus, LogOut, Save, Tras
 import {
   addGalleryImage,
   blockSlotRange,
-  convertImageFileToAvif,
+  convertImageFileForStorage,
   defaultHeroImage,
   deleteGalleryImage,
   deleteHeroImage,
@@ -420,11 +420,12 @@ export default function AdminPage() {
     try {
       setIsUploadingImage(true);
       setImageMessage("");
-      const src = await convertImageFileToAvif(file);
-      saveHeroImage({ src, alt: "Barbershop Hero" });
+      const image = await convertImageFileForStorage(file);
+      const fallbackNote = image.formatLabel === "AVIF" ? "" : ` (${image.formatLabel}, weil AVIF hier nicht unterstuetzt wird)`;
+      saveHeroImage({ src: image.src, alt: "Barbershop Hero" });
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["heroImage"] });
-      setImageMessage("Hero-Bild wurde als AVIF gespeichert.");
+      setImageMessage(`Hero-Bild wurde gespeichert${fallbackNote}.`);
     } catch (error) {
       setImageMessage(error instanceof Error ? error.message : "Bild konnte nicht gespeichert werden.");
     } finally {
@@ -444,11 +445,12 @@ export default function AdminPage() {
     try {
       setIsUploadingImage(true);
       setImageMessage("");
-      const src = await convertImageFileToAvif(file, 1200);
-      addGalleryImage({ src, alt, label });
+      const image = await convertImageFileForStorage(file, 1200);
+      const fallbackNote = image.formatLabel === "AVIF" ? "" : ` (${image.formatLabel}, weil AVIF hier nicht unterstuetzt wird)`;
+      addGalleryImage({ src: image.src, alt, label });
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["galleryImages"] });
-      setImageMessage("Galerie-Bild wurde als AVIF gespeichert.");
+      setImageMessage(`Galerie-Bild wurde gespeichert${fallbackNote}.`);
     } catch (error) {
       setImageMessage(error instanceof Error ? error.message : "Bild konnte nicht gespeichert werden.");
     } finally {
@@ -761,7 +763,7 @@ export default function AdminPage() {
           </label>
           <button type="submit" disabled={isUploadingImage}>
             <ImagePlus size={18} />
-            Als AVIF speichern
+            Bild speichern
           </button>
           {heroImage ? (
             <button
@@ -795,9 +797,9 @@ export default function AdminPage() {
             </label>
             <button type="submit" disabled={isUploadingImage}>
               <ImagePlus size={18} />
-              Als AVIF speichern
+              Bild speichern
             </button>
-            {imageMessage ? <p className={imageMessage.includes("AVIF gespeichert") ? "success-message" : "error-message"}>{imageMessage}</p> : null}
+            {imageMessage ? <p className={imageMessage.includes("gespeichert") ? "success-message" : "error-message"}>{imageMessage}</p> : null}
           </form>
 
           <div className="admin-gallery-list">
@@ -806,7 +808,7 @@ export default function AdminPage() {
                 <img src={image.src} alt={image.alt} />
                 <div>
                   <strong>{image.label}</strong>
-                  <span>{image.createdAt === "default" ? "Standardbild" : "AVIF Upload"}</span>
+                  <span>{image.createdAt === "default" ? "Standardbild" : "Upload"}</span>
                 </div>
                 <button
                   type="button"
