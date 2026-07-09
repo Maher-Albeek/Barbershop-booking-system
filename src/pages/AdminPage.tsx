@@ -6,7 +6,6 @@ import {
   deleteSlot,
   formatGermanDate,
   getBookings,
-  getContacts,
   getSlots,
   isAdminAuthenticated,
   loginAdmin,
@@ -30,7 +29,6 @@ export default function AdminPage() {
   const [slotForm, setSlotForm] = useState(emptySlot);
   const { data: slots = [] } = useQuery({ queryKey: ["slots"], queryFn: getSlots });
   const { data: bookings = [] } = useQuery({ queryKey: ["bookings"], queryFn: getBookings });
-  const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: getContacts });
 
   function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -212,15 +210,6 @@ export default function AdminPage() {
             <span>10.08.2026</span>
             <span>14:00 Uhr</span>
           </div>
-          <h2>Kontaktanfragen</h2>
-          {contacts.length === 0 ? <p>Noch keine Kontaktanfragen.</p> : null}
-          {contacts.map((contact) => (
-            <article key={contact.id} className="notification-box">
-              <strong>{contact.name}</strong>
-              <span>{contact.email}</span>
-              <span>{contact.message}</span>
-            </article>
-          ))}
         </div>
       </div>
     </section>

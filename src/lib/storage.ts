@@ -1,8 +1,7 @@
-import type { AppointmentSlot, Booking, ContactRequest } from "./types";
+import type { AppointmentSlot, Booking } from "./types";
 
 const slotsKey = "barber.slots";
 const bookingsKey = "barber.bookings";
-const contactsKey = "barber.contacts";
 const authKey = "barber.admin.auth";
 
 const today = new Date();
@@ -81,16 +80,6 @@ export function createBooking(input: Omit<Booking, "id" | "createdAt">) {
   };
   writeJson(bookingsKey, [...getBookings(), booking]);
   return booking;
-}
-
-export function getContacts() {
-  return readJson<ContactRequest[]>(contactsKey, []);
-}
-
-export function createContact(input: Omit<ContactRequest, "id" | "createdAt">) {
-  const contact = { ...input, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
-  writeJson(contactsKey, [...getContacts(), contact]);
-  return contact;
 }
 
 export function isAdminAuthenticated() {

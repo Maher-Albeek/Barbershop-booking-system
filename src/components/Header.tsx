@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CalendarDays, Image, LockKeyhole, Mail, Scissors } from "lucide-react";
+import { CalendarDays, Image, LockKeyhole, Scissors } from "lucide-react";
 
 export function Header() {
   return (
@@ -16,10 +16,6 @@ export function Header() {
         <a href="/#booking">
           <CalendarDays size={18} />
           Termine
-        </a>
-        <a href="/#contact">
-          <Mail size={18} />
-          Kontakt
         </a>
         <Link to="/admin">
           <LockKeyhole size={18} />

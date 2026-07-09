@@ -202,7 +202,6 @@ p {
 
 .qr-section,
 .booking-layout,
-.contact-section,
 .admin-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1.1fr);
@@ -498,7 +497,6 @@ p {
   .info-band,
   .qr-section,
   .booking-layout,
-  .contact-section,
   .admin-grid {
     grid-template-columns: 1fr;
   }

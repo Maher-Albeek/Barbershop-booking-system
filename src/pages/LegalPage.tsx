@@ -23,7 +23,7 @@ export default function LegalPage({ type }: Props) {
       ) : (
         <>
           <p>
-            Personenbezogene Daten aus Termin- und Kontaktformularen werden nur zur Bearbeitung der Anfrage gespeichert.
+            Personenbezogene Daten aus Terminbuchungen werden nur zur Bearbeitung der Anfrage gespeichert.
             Pflichtfelder sind Name, E-Mail, Termin und die Datenschutzbestätigung.
           </p>
           <p>

@@ -9,7 +9,6 @@ export function Footer() {
       </div>
       <nav aria-label="Footer Navigation">
         <a href="/#booking">Verfügbare Termine</a>
-        <a href="/#contact">Kontakt</a>
         <Link to="/datenschutz">Datenschutz</Link>
         <Link to="/impressum">Impressum</Link>
         <button type="button" onClick={() => localStorage.removeItem("barber.cookie.notice")}>

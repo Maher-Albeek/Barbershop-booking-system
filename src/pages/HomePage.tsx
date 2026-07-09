@@ -3,8 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, QrCode, ShieldCheck } from "lucide-react";
-import { createBooking, createContact, formatGermanDate, getSlots } from "../lib/storage";
+import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, ShieldCheck } from "lucide-react";
+import { createBooking, formatGermanDate, getSlots } from "../lib/storage";
 
 const bookingSchema = z.object({
   customerName: z.string().min(2, "Bitte vollständigen Namen eingeben."),
@@ -15,15 +15,7 @@ const bookingSchema = z.object({
   privacy: z.boolean().refine((value) => value, "Datenschutz muss akzeptiert werden."),
 });
 
-const contactSchema = z.object({
-  name: z.string().min(2, "Bitte Namen eingeben."),
-  email: z.string().email("Bitte gültige E-Mail eingeben."),
-  message: z.string().min(10, "Bitte Nachricht mit mindestens 10 Zeichen eingeben."),
-  privacy: z.boolean().refine((value) => value, "Datenschutz muss akzeptiert werden."),
-});
-
 type BookingForm = z.infer<typeof bookingSchema>;
-type ContactForm = z.infer<typeof contactSchema>;
 
 const galleryImages = [
   {
@@ -52,7 +44,6 @@ export default function HomePage() {
   const queryClient = useQueryClient();
   const [selectedImage, setSelectedImage] = useState<(typeof galleryImages)[number] | null>(null);
   const [bookingNotice, setBookingNotice] = useState("");
-  const [contactNotice, setContactNotice] = useState("");
   const { data: slots = [] } = useQuery({ queryKey: ["slots"], queryFn: getSlots });
   const availableSlots = useMemo(
     () => slots.filter((slot) => slot.status === "available").sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
@@ -62,11 +53,6 @@ export default function HomePage() {
   const bookingForm = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
     defaultValues: { customerName: "", customerEmail: "", customerPhone: "", slotId: "", message: "", privacy: false },
-  });
-
-  const contactForm = useForm<ContactForm>({
-    resolver: zodResolver(contactSchema),
-    defaultValues: { name: "", email: "", message: "", privacy: false },
   });
 
   function reserveAppointment(data: BookingForm) {
@@ -89,12 +75,6 @@ export default function HomePage() {
     }
   }
 
-  function sendContact(data: ContactForm) {
-    createContact({ name: data.name, email: data.email, message: data.message });
-    setContactNotice("Nachricht gesendet. Der Barber erhält eine E-Mail-Benachrichtigung.");
-    contactForm.reset();
-  }
-
   return (
     <>
       <section className="hero" id="home">
@@ -111,7 +91,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="info-band" aria-label="Kontaktinformationen">
+      <section className="info-band" aria-label="Standort und Öffnungszeiten">
         <div>
           <MapPin size={22} />
           <span>Hauptstraße 12, 10115 Berlin</span>
@@ -211,38 +191,6 @@ export default function HomePage() {
           <small>{bookingForm.formState.errors.privacy?.message}</small>
           <button type="submit">Termin reservieren</button>
           {bookingNotice && <p className="success-message">{bookingNotice}</p>}
-        </form>
-      </section>
-
-      <section className="section contact-section" id="contact">
-        <div>
-          <p className="eyebrow">Kontakt</p>
-          <h2>Fragen an den Barber senden</h2>
-          <p>Kontaktanfragen werden gespeichert und sind für eine spätere E-Mail-Integration vorbereitet.</p>
-        </div>
-        <form className="form-panel" onSubmit={contactForm.handleSubmit(sendContact)}>
-          <label>
-            Name *
-            <input {...contactForm.register("name")} />
-            <small>{contactForm.formState.errors.name?.message}</small>
-          </label>
-          <label>
-            Email *
-            <input {...contactForm.register("email")} type="email" />
-            <small>{contactForm.formState.errors.email?.message}</small>
-          </label>
-          <label>
-            Nachricht *
-            <textarea {...contactForm.register("message")} rows={4} />
-            <small>{contactForm.formState.errors.message?.message}</small>
-          </label>
-          <label className="checkbox-row">
-            <input type="checkbox" {...contactForm.register("privacy")} />
-            Datenschutz akzeptieren *
-          </label>
-          <small>{contactForm.formState.errors.privacy?.message}</small>
-          <button type="submit">Nachricht senden</button>
-          {contactNotice && <p className="success-message">{contactNotice}</p>}
         </form>
       </section>
 

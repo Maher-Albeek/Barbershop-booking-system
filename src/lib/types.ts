@@ -18,11 +18,3 @@ export type Booking = {
   message?: string;
   createdAt: string;
 };
-
-export type ContactRequest = {
-  id: string;
-  name: string;
-  email: string;
-  message: string;
-  createdAt: string;
-};
