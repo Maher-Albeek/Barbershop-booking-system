@@ -1,6 +1,6 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, ImagePlus, LogOut, Trash2 } from "lucide-react";
+import { Ban, CalendarDays, ChevronLeft, ChevronRight, ImagePlus, LogOut, Trash2 } from "lucide-react";
 import {
   addGalleryImage,
   blockSlotRange,
@@ -42,6 +42,32 @@ function addMinutes(time: string, duration: number) {
   return `${hours}:${minutes}`;
 }
 
+function getDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" }).format(date);
+}
+
+function getCalendarMonthDays(monthDate: Date) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const leadingEmptyDays = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const days: Array<{ dateKey: string; day: number } | null> = Array.from({ length: leadingEmptyDays }, () => null);
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    days.push({ dateKey: getDateKey(new Date(year, month, day)), day });
+  }
+
+  return days;
+}
+
 export default function AdminPage() {
   const queryClient = useQueryClient();
   const [authenticated, setAuthenticated] = useState(isAdminAuthenticated);
@@ -50,6 +76,14 @@ export default function AdminPage() {
   const [imageMessage, setImageMessage] = useState("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [blockedTimeForm, setBlockedTimeForm] = useState(emptyBlockedTime);
+  const [blockedListDate, setBlockedListDate] = useState(emptyBlockedTime.date);
+  const [selectedBlockedSlotIds, setSelectedBlockedSlotIds] = useState<string[]>([]);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [blockedCalendarOpen, setBlockedCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const initialDate = new Date(`${blockedListDate}T12:00:00`);
+    return new Date(initialDate.getFullYear(), initialDate.getMonth(), 1);
+  });
   const { data: slots = [] } = useQuery({ queryKey: ["slots"], queryFn: getSlots });
   const { data: bookings = [] } = useQuery({ queryKey: ["bookings"], queryFn: getBookings });
   const { data: galleryImages = [] } = useQuery({ queryKey: ["galleryImages"], queryFn: getGalleryImages });
@@ -57,10 +91,58 @@ export default function AdminPage() {
   const workingTimes = getWorkingTimes();
   const blockEndTimes = getBlockEndTimes();
   const endTimeOptions = blockEndTimes.filter((time) => timeToMinutes(time) > timeToMinutes(blockedTimeForm.startTime));
-  const blockedSlots = slots
-    .filter((slot) => slot.status === "blocked")
-    .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
+  const blockedSlots = useMemo(
+    () =>
+      slots
+        .filter((slot) => slot.status === "blocked")
+        .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
+    [slots],
+  );
+  const blockedSlotsForSelectedDate = useMemo(
+    () => blockedSlots.filter((slot) => slot.date === blockedListDate).sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [blockedListDate, blockedSlots],
+  );
+  const selectedBlockedSlots = useMemo(
+    () => blockedSlotsForSelectedDate.filter((slot) => selectedBlockedSlotIds.includes(slot.id)),
+    [blockedSlotsForSelectedDate, selectedBlockedSlotIds],
+  );
+  const allVisibleBlockedSlotsSelected =
+    blockedSlotsForSelectedDate.length > 0 && blockedSlotsForSelectedDate.every((slot) => selectedBlockedSlotIds.includes(slot.id));
+  const blockedDateKeys = useMemo(() => new Set(blockedSlots.map((slot) => slot.date)), [blockedSlots]);
+  const calendarDays = useMemo(() => getCalendarMonthDays(calendarMonth), [calendarMonth]);
+  const todayKey = getDateKey(new Date());
   const bookedSlots = slots.filter((slot) => slot.status === "booked");
+
+  function updateBlockedListDate(date: string) {
+    const selectedDate = new Date(`${date}T12:00:00`);
+    setBlockedListDate(date);
+    setCalendarMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+    setSelectedBlockedSlotIds([]);
+    setConfirmDeleteOpen(false);
+    setBlockedCalendarOpen(false);
+  }
+
+  function changeCalendarMonth(direction: number) {
+    setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + direction, 1));
+    setConfirmDeleteOpen(false);
+  }
+
+  function toggleBlockedSlotSelection(slotId: string) {
+    setSelectedBlockedSlotIds((current) => (current.includes(slotId) ? current.filter((id) => id !== slotId) : [...current, slotId]));
+    setConfirmDeleteOpen(false);
+  }
+
+  function toggleAllBlockedSlotsForDate() {
+    setSelectedBlockedSlotIds(allVisibleBlockedSlotsSelected ? [] : blockedSlotsForSelectedDate.map((slot) => slot.id));
+    setConfirmDeleteOpen(false);
+  }
+
+  function deleteSelectedBlockedSlots() {
+    selectedBlockedSlots.forEach((slot) => unblockSlot(slot.id));
+    setSelectedBlockedSlotIds([]);
+    setConfirmDeleteOpen(false);
+    queryClient.invalidateQueries({ queryKey: ["slots"] });
+  }
 
   function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -74,14 +156,36 @@ export default function AdminPage() {
 
   function saveBlockedTime(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (timeToMinutes(blockedTimeForm.endTime) <= timeToMinutes(blockedTimeForm.startTime)) {
+    const startMinutes = timeToMinutes(blockedTimeForm.startTime);
+    const endMinutes = timeToMinutes(blockedTimeForm.endTime);
+    if (endMinutes <= startMinutes) {
       setBlockError("Endzeit muss nach der Startzeit liegen.");
       return;
     }
+    const existingBlockedSlots = blockedSlots.filter(
+      (slot) =>
+        slot.date === blockedTimeForm.date &&
+        timeToMinutes(slot.startTime) >= startMinutes &&
+        timeToMinutes(slot.startTime) < endMinutes,
+    );
+    if (existingBlockedSlots.length > 0) {
+      const times = existingBlockedSlots
+        .map((slot) => `${slot.startTime} - ${addMinutes(slot.startTime, slot.duration)}`)
+        .join(", ");
+      setBlockError(`Diese Zeit ist bereits blockiert: ${times}.`);
+      return;
+    }
 
-    blockSlotRange(blockedTimeForm);
+    const blockedRange = blockSlotRange(blockedTimeForm);
+    if (blockedRange.length === 0) {
+      setBlockError("Fuer dieses Datum und diese Uhrzeit gibt es keine blockierbaren Termine.");
+      return;
+    }
+
     setBlockError("");
-    setBlockedTimeForm(emptyBlockedTime);
+    setBlockedTimeForm({ ...emptyBlockedTime, date: blockedTimeForm.date });
+    setSelectedBlockedSlotIds([]);
+    setConfirmDeleteOpen(false);
     queryClient.invalidateQueries({ queryKey: ["slots"] });
   }
 
@@ -224,27 +328,109 @@ export default function AdminPage() {
 
         <div className="panel">
           <h2>Blockierte Zeiten</h2>
+          <div className="blocked-date-filter">
+            <span>Datum pruefen</span>
+            <div className="blocked-calendar-wrap">
+              <button
+                type="button"
+                className="blocked-calendar-selected"
+                aria-expanded={blockedCalendarOpen}
+                onClick={() => setBlockedCalendarOpen((open) => !open)}
+              >
+                <strong>{formatGermanDate(blockedListDate)}</strong>
+                <CalendarDays size={18} />
+              </button>
+              {blockedCalendarOpen ? (
+                <div className="blocked-calendar">
+                  <div className="blocked-calendar-header">
+                    <button type="button" aria-label="Vorheriger Monat" onClick={() => changeCalendarMonth(-1)}>
+                      <ChevronLeft size={18} />
+                    </button>
+                    <strong>{getMonthLabel(calendarMonth)}</strong>
+                    <button type="button" aria-label="Naechster Monat" onClick={() => changeCalendarMonth(1)}>
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                  <div className="blocked-calendar-weekdays" aria-hidden="true">
+                    {["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((day) => (
+                      <span key={day}>{day}</span>
+                    ))}
+                  </div>
+                  <div className="blocked-calendar-grid">
+                    {calendarDays.map((day, index) =>
+                      day ? (
+                        <button
+                          key={day.dateKey}
+                          type="button"
+                          className={[
+                            "blocked-calendar-day",
+                            day.dateKey === blockedListDate ? "is-selected" : "",
+                            blockedDateKeys.has(day.dateKey) ? "has-blocked-slots" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          disabled={day.dateKey < todayKey}
+                          onClick={() => updateBlockedListDate(day.dateKey)}
+                        >
+                          <span>{day.day}</span>
+                        </button>
+                      ) : (
+                        <span key={`empty-${index}`} className="blocked-calendar-empty" />
+                      ),
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+          {blockedSlotsForSelectedDate.length > 0 ? (
+            <div className="blocked-list-toolbar">
+              <label className="slot-select-all">
+                <input type="checkbox" checked={allVisibleBlockedSlotsSelected} onChange={toggleAllBlockedSlotsForDate} />
+                Alle markieren
+              </label>
+              <button
+                type="button"
+                className="danger-action"
+                disabled={selectedBlockedSlots.length === 0}
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
+                <Trash2 size={16} />
+                Auswahl loeschen
+              </button>
+            </div>
+          ) : null}
+          {confirmDeleteOpen ? (
+            <div className="delete-confirmation">
+              <strong>{selectedBlockedSlots.length} blockierte Zeit(en) wirklich loeschen?</strong>
+              <span>Diese Zeiten sind danach fuer Kunden wieder buchbar.</span>
+              <div>
+                <button type="button" className="danger-action" onClick={deleteSelectedBlockedSlots}>
+                  Ja, loeschen
+                </button>
+                <button type="button" className="secondary-button" onClick={() => setConfirmDeleteOpen(false)}>
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          ) : null}
           <div className="table-list">
-            {blockedSlots.length === 0 ? <p>Keine Zeiten blockiert.</p> : null}
-            {blockedSlots.map((slot) => (
+            {blockedSlotsForSelectedDate.length === 0 ? <p>Keine Zeiten fuer dieses Datum blockiert.</p> : null}
+            {blockedSlotsForSelectedDate.map((slot) => (
               <article key={slot.id} className="slot-row">
+                <label className="slot-select">
+                  <input
+                    type="checkbox"
+                    checked={selectedBlockedSlotIds.includes(slot.id)}
+                    onChange={() => toggleBlockedSlotSelection(slot.id)}
+                  />
+                  <span className="sr-only">Blockierte Zeit auswaehlen</span>
+                </label>
                 <div>
                   <strong>
                     {formatGermanDate(slot.date, slot.startTime)} · {slot.startTime} - {addMinutes(slot.startTime, slot.duration)}
                   </strong>
                   <span>Fuer Kunden nicht buchbar</span>
-                </div>
-                <div className="row-actions">
-                  <button
-                    type="button"
-                    aria-label="Blockierung entfernen"
-                    onClick={() => {
-                      unblockSlot(slot.id);
-                      queryClient.invalidateQueries({ queryKey: ["slots"] });
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
                 </div>
               </article>
             ))}
