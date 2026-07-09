@@ -66,8 +66,10 @@ function timeToMinutes(time: string) {
 async function apiRequest<T>(path: string, init?: RequestInit) {
   const response = await fetch(path, {
     credentials: "include",
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
+      "Cache-Control": "no-store",
       ...(init?.headers ?? {}),
     },
     ...init,

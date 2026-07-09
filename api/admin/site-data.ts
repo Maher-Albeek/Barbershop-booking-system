@@ -7,6 +7,10 @@ function timeToMinutes(time: string) {
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+
   const profile = await requireAdmin(req);
   if (!profile) {
     sendError(res, 401, "Nicht angemeldet.");

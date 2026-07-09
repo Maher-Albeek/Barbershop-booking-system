@@ -246,13 +246,14 @@ p {
 }
 
 .gallery-stack {
-  display: none;
-  width: min(100%, 380px);
+  display: block;
+  width: min(100%, 440px);
   height: clamp(320px, 48vw, 500px);
   margin: 0 auto;
 }
 
 .gallery-masonry {
+  display: none;
   columns: 3 260px;
   column-gap: 18px;
 }

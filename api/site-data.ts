@@ -2,6 +2,10 @@ import { createBooking, getPublicSiteData, getStoredSiteData, saveStoredSiteData
 import { sendError, type ApiRequest, type ApiResponse } from "./_auth.js";
 
 export default async function handler(req: ApiRequest, res: ApiResponse) {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+
   try {
     const data = await getStoredSiteData();
 
