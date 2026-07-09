@@ -1,6 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, ChevronLeft, ChevronRight, Download, ImagePlus, LogOut, Trash2 } from "lucide-react";
+import { Ban, ChevronLeft, ChevronRight, Download, ImagePlus, LogOut, Save, Trash2 } from "lucide-react";
 import {
   addGalleryImage,
   adminEmail,
@@ -11,6 +11,7 @@ import {
   deleteGalleryImage,
   deleteHeroImage,
   formatGermanDate,
+  getAdminProfile,
   getBlockEndTimes,
   getBookings,
   getGalleryImages,
@@ -22,10 +23,11 @@ import {
   logoutAdmin,
   saveHeroImage,
   unblockSlot,
+  updateAdminProfile,
 } from "../lib/storage";
 import type { AppointmentSlot, Booking } from "../lib/types";
 
-type AdminSection = "slots" | "gallery";
+type AdminSection = "slots" | "gallery" | "profile";
 type SlotViewFilter = "all" | "booked" | "blocked";
 
 const emptyBlockedTime = {
@@ -194,6 +196,14 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState("");
   const [blockError, setBlockError] = useState("");
   const [imageMessage, setImageMessage] = useState("");
+  const [profileMessage, setProfileMessage] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [profileForm, setProfileForm] = useState(() => ({
+    email: getAdminProfile().email,
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  }));
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [blockedTimeForm, setBlockedTimeForm] = useState(emptyBlockedTime);
   const [blockedListDate, setBlockedListDate] = useState(emptyBlockedTime.date);
@@ -254,6 +264,7 @@ export default function AdminPage() {
   const adminSections: Array<{ id: AdminSection; label: string }> = [
     { id: "slots", label: "Slots" },
     { id: "gallery", label: "Galerie" },
+    { id: "profile", label: "Profil" },
   ];
   const activeSectionTitle = adminSections.find((section) => section.id === activeSection)?.label ?? "Slots";
 
@@ -294,7 +305,33 @@ export default function AdminPage() {
     const password = String(data.get("password"));
     const valid = loginAdmin(email, password);
     setAuthenticated(valid);
-    setLoginError(valid ? "" : `Login fehlgeschlagen. Demo: ${adminEmail} / ${adminPassword}`);
+    const profile = getAdminProfile();
+    const usesDefaultLogin = profile.email === adminEmail && profile.password === adminPassword;
+    setLoginError(valid ? "" : usesDefaultLogin ? `Login fehlgeschlagen. Demo: ${adminEmail} / ${adminPassword}` : "Login fehlgeschlagen.");
+  }
+
+  function saveProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setProfileMessage("");
+    setProfileError("");
+
+    if (profileForm.newPassword !== profileForm.confirmPassword) {
+      setProfileError("Neues Passwort und Wiederholung stimmen nicht ueberein.");
+      return;
+    }
+
+    try {
+      const nextProfile = updateAdminProfile(profileForm);
+      setProfileForm({
+        email: nextProfile.email,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setProfileMessage("Profil wurde gespeichert. Nutze die neuen Daten beim naechsten Login.");
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Profil konnte nicht gespeichert werden.");
+    }
   }
 
   function saveBlockedTime(event: FormEvent<HTMLFormElement>) {
@@ -748,6 +785,62 @@ export default function AdminPage() {
               </article>
             ))}
           </div>
+        </div>
+      </div>
+      ) : null}
+
+      {activeSection === "profile" ? (
+      <div className="profile-admin-layout">
+        <form className="form-panel profile-panel" onSubmit={saveProfile}>
+          <h2>Profil bearbeiten</h2>
+          <label>
+            Email
+            <input
+              type="email"
+              value={profileForm.email}
+              onChange={(event) => setProfileForm({ ...profileForm, email: event.target.value })}
+            />
+          </label>
+          <label>
+            Aktuelles Passwort
+            <input
+              type="password"
+              value={profileForm.currentPassword}
+              autoComplete="current-password"
+              onChange={(event) => setProfileForm({ ...profileForm, currentPassword: event.target.value })}
+            />
+          </label>
+          <label>
+            Neues Passwort
+            <input
+              type="password"
+              value={profileForm.newPassword}
+              autoComplete="new-password"
+              onChange={(event) => setProfileForm({ ...profileForm, newPassword: event.target.value })}
+            />
+          </label>
+          <label>
+            Neues Passwort wiederholen
+            <input
+              type="password"
+              value={profileForm.confirmPassword}
+              autoComplete="new-password"
+              onChange={(event) => setProfileForm({ ...profileForm, confirmPassword: event.target.value })}
+            />
+          </label>
+          <button type="submit">
+            <Save size={18} />
+            Profil speichern
+          </button>
+          {profileMessage ? <p className="success-message">{profileMessage}</p> : null}
+          {profileError ? <p className="error-message">{profileError}</p> : null}
+        </form>
+        <div className="panel profile-help-panel">
+          <h2>Login Daten</h2>
+          <p>
+            Die neuen Admin-Daten werden in diesem Browser gespeichert und ersetzen die Standardwerte fuer den Login auf diesem Geraet.
+          </p>
+          <p>Nach dem Speichern bleibt die aktuelle Sitzung aktiv.</p>
         </div>
       </div>
       ) : null}

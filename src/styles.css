@@ -851,6 +851,23 @@ p {
   margin-top: 22px;
 }
 
+.profile-admin-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1fr);
+  gap: clamp(24px, 5vw, 52px);
+  align-items: start;
+  margin-top: 22px;
+}
+
+.profile-panel {
+  max-width: 520px;
+}
+
+.profile-help-panel p {
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
 .slots-overview-panel {
   order: -1;
 }
@@ -1286,8 +1303,13 @@ p {
 
   .info-band,
   .booking-layout,
-  .admin-grid {
+  .admin-grid,
+  .profile-admin-layout {
     grid-template-columns: 1fr;
+  }
+
+  .profile-panel {
+    max-width: none;
   }
 
   .gallery-grid {

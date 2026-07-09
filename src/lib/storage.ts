@@ -3,6 +3,7 @@ import type { AppointmentSlot, Booking, SiteImage } from "./types";
 const slotsKey = "barber.slots";
 const bookingsKey = "barber.bookings";
 const authKey = "barber.admin.auth";
+const adminProfileKey = "barber.admin.profile";
 const galleryImagesKey = "barber.galleryImages";
 const heroImageKey = "barber.heroImage";
 export const adminEmail = import.meta.env.VITE_ADMIN_EMAIL ?? "admin@barber.local";
@@ -294,8 +295,38 @@ export function isAdminAuthenticated() {
   return localStorage.getItem(authKey) === "true";
 }
 
+export function getAdminProfile() {
+  return readJson(adminProfileKey, {
+    email: adminEmail,
+    password: adminPassword,
+  });
+}
+
+export function updateAdminProfile(input: { email: string; currentPassword: string; newPassword: string }) {
+  const profile = getAdminProfile();
+  const email = input.email.trim().toLowerCase();
+  const newPassword = input.newPassword.trim();
+
+  if (!email || !email.includes("@")) {
+    throw new Error("Bitte eine gueltige Email eingeben.");
+  }
+
+  if (input.currentPassword !== profile.password) {
+    throw new Error("Aktuelles Passwort ist falsch.");
+  }
+
+  if (newPassword.length < 8) {
+    throw new Error("Neues Passwort muss mindestens 8 Zeichen haben.");
+  }
+
+  const nextProfile = { email, password: newPassword };
+  writeJson(adminProfileKey, nextProfile);
+  return nextProfile;
+}
+
 export function loginAdmin(email: string, password: string) {
-  const isValid = email === adminEmail && password === adminPassword;
+  const profile = getAdminProfile();
+  const isValid = email.trim().toLowerCase() === profile.email && password === profile.password;
   if (isValid) localStorage.setItem(authKey, "true");
   return isValid;
 }
