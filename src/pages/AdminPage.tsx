@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, ChevronLeft, ChevronRight, Download, ImagePlus, LogOut, Trash2 } from "lucide-react";
 import {
   addGalleryImage,
+  adminEmail,
+  adminPassword,
   blockSlotRange,
   convertImageFileToAvif,
   defaultHeroImage,
@@ -292,7 +294,7 @@ export default function AdminPage() {
     const password = String(data.get("password"));
     const valid = loginAdmin(email, password);
     setAuthenticated(valid);
-    setLoginError(valid ? "" : "Login fehlgeschlagen. Demo: admin@barber.local / Barber2026!");
+    setLoginError(valid ? "" : `Login fehlgeschlagen. Demo: ${adminEmail} / ${adminPassword}`);
   }
 
   function saveBlockedTime(event: FormEvent<HTMLFormElement>) {
@@ -400,11 +402,11 @@ export default function AdminPage() {
           <h1>Geschuetzter Bereich</h1>
           <label>
             Email
-            <input name="email" type="email" defaultValue="admin@barber.local" />
+            <input name="email" type="email" defaultValue={adminEmail} />
           </label>
           <label>
             Password
-            <input name="password" type="password" defaultValue="Barber2026!" />
+            <input name="password" type="password" defaultValue={adminPassword} />
           </label>
           <button type="submit">Login</button>
           {loginError && <p className="error-message">{loginError}</p>}
