@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, ShieldCheck } from "lucide-react";
-import { createBooking, formatGermanDate, getSlots } from "../lib/storage";
+import { createBooking, defaultHeroImage, formatGermanDate, getGalleryImages, getHeroImage, getSlots } from "../lib/storage";
+import type { SiteImage } from "../lib/types";
 
 const bookingSchema = z.object({
   customerName: z.string().min(2, "Bitte vollständigen Namen eingeben."),
@@ -17,43 +18,34 @@ const bookingSchema = z.object({
 
 type BookingForm = z.infer<typeof bookingSchema>;
 
-const galleryImages = [
-  {
-    src: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=900&q=80",
-    alt: "Barber schneidet Haare im Salon",
-    label: "Classic Fade",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=900&q=80",
-    alt: "Bartpflege mit Rasiermesser",
-    label: "Beard Trim",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=900&q=80",
-    alt: "Moderner Barbershop Innenraum",
-    label: "Shop",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1517832606299-7ae9b720a186?auto=format&fit=crop&w=900&q=80",
-    alt: "Styling Ergebnis nach Haarschnitt",
-    label: "Before / After",
-  },
-];
-
 export default function HomePage() {
   const queryClient = useQueryClient();
-  const [selectedImage, setSelectedImage] = useState<(typeof galleryImages)[number] | null>(null);
+  const [selectedImage, setSelectedImage] = useState<SiteImage | null>(null);
   const [bookingNotice, setBookingNotice] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
   const { data: slots = [] } = useQuery({ queryKey: ["slots"], queryFn: getSlots });
+  const { data: galleryImages = [] } = useQuery({ queryKey: ["galleryImages"], queryFn: getGalleryImages });
+  const { data: heroImage } = useQuery({ queryKey: ["heroImage"], queryFn: getHeroImage });
   const availableSlots = useMemo(
     () => slots.filter((slot) => slot.status === "available").sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
     [slots],
+  );
+  const bookableDates = useMemo(() => Array.from(new Set(slots.map((slot) => slot.date))).sort(), [slots]);
+  const slotsForSelectedDate = useMemo(
+    () => availableSlots.filter((slot) => slot.date === selectedDate),
+    [availableSlots, selectedDate],
   );
 
   const bookingForm = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
     defaultValues: { customerName: "", customerEmail: "", customerPhone: "", slotId: "", message: "", privacy: false },
   });
+
+  useEffect(() => {
+    if (bookableDates.length > 0 && (!selectedDate || !bookableDates.includes(selectedDate))) {
+      setSelectedDate(bookableDates[0]);
+    }
+  }, [bookableDates, selectedDate]);
 
   function reserveAppointment(data: BookingForm) {
     try {
@@ -77,7 +69,11 @@ export default function HomePage() {
 
   return (
     <>
-      <section className="hero" id="home">
+      <section
+        className="hero"
+        id="home"
+        style={{ "--hero-image": `url("${heroImage?.src ?? defaultHeroImage}")` } as CSSProperties}
+      >
         <div className="hero-content">
           <h1>Adem</h1>
           <a className="primary-action" href="#booking">
@@ -93,7 +89,7 @@ export default function HomePage() {
         </div>
         <div>
           <Clock size={22} />
-          <span>Mo-Sa 09:00-19:00</span>
+          <span>Mo-Fr 09:00-19:00</span>
         </div>
         <div>
           <Mail size={22} />
@@ -104,13 +100,12 @@ export default function HomePage() {
       <section className="section" id="gallery">
         <div className="section-heading">
           <p className="eyebrow">Galerie</p>
-          <h2>AVIF-ready Bilder für Leistungen und Before/After</h2>
+          <h2>Unsere Arbeiten – Präzision, Stil und perfekte Ergebnisse</h2>
         </div>
         <div className="gallery-grid">
           {galleryImages.map((image) => (
-            <button key={image.src} type="button" className="gallery-item" onClick={() => setSelectedImage(image)}>
+            <button key={image.id} type="button" className="gallery-item" onClick={() => setSelectedImage(image)}>
               <img src={image.src} alt={image.alt} loading="lazy" />
-              <span>{image.label}</span>
             </button>
           ))}
         </div>
@@ -120,7 +115,7 @@ export default function HomePage() {
         <div className="booking-copy">
           <p className="eyebrow">Terminbuchung</p>
           <h2>Verfügbare Termine</h2>
-          <p>Nur freie und zukünftige Slots werden angezeigt. Nach der Reservierung wird der Slot sofort blockiert.</p>
+          <p>Termine sind automatisch von Montag bis Freitag im aktuellen Monat und in den naechsten 3 Monaten verfuegbar.</p>
           <div className="trust-list">
             <span>
               <ShieldCheck size={18} /> Datenschutz-Checkbox
@@ -149,18 +144,33 @@ export default function HomePage() {
             Phone
             <input {...bookingForm.register("customerPhone")} type="tel" placeholder="+49 ..." />
           </label>
-          <label>
-            Date / Time *
-            <select {...bookingForm.register("slotId")}>
-              <option value="">Termin wählen</option>
-              {availableSlots.map((slot) => (
-                <option key={slot.id} value={slot.id}>
-                  {formatGermanDate(slot.date, slot.startTime)} · {slot.startTime} Uhr · {slot.service} · {slot.duration} Min.
-                </option>
-              ))}
-            </select>
-            <small>{bookingForm.formState.errors.slotId?.message}</small>
-          </label>
+          <div className="date-time-grid">
+            <label>
+              Date *
+              <input
+                type="date"
+                value={selectedDate}
+                min={bookableDates[0]}
+                max={bookableDates[bookableDates.length - 1]}
+                onChange={(event) => {
+                  setSelectedDate(event.target.value);
+                  bookingForm.setValue("slotId", "", { shouldValidate: true });
+                }}
+              />
+            </label>
+            <label>
+              Time *
+              <select {...bookingForm.register("slotId")} disabled={!selectedDate || slotsForSelectedDate.length === 0}>
+                <option value="">{slotsForSelectedDate.length > 0 ? "Uhrzeit wählen" : "Keine Termine"}</option>
+                {slotsForSelectedDate.map((slot) => (
+                  <option key={slot.id} value={slot.id}>
+                    {slot.startTime} Uhr
+                  </option>
+                ))}
+              </select>
+              <small>{bookingForm.formState.errors.slotId?.message}</small>
+            </label>
+          </div>
           <label>
             Message
             <textarea {...bookingForm.register("message")} rows={3} placeholder="Optionaler Hinweis" />

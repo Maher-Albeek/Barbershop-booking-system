@@ -9,7 +9,7 @@ export function Header() {
     <header className="site-header">
       <Link to="/" className="brand" aria-label="Barber Booking System Startseite">
         <Scissors size={24} />
-        <span>Barber Booking</span>
+        <span>Adem</span>
       </Link>
       <nav aria-label="Hauptnavigation">
         <button type="button" className="header-qr-button" onClick={() => setIsQrOpen(true)}>

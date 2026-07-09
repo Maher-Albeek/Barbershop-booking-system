@@ -1,4 +1,4 @@
-export type SlotStatus = "available" | "booked";
+export type SlotStatus = "available" | "booked" | "blocked";
 
 export type AppointmentSlot = {
   id: string;
@@ -16,5 +16,13 @@ export type Booking = {
   customerEmail: string;
   customerPhone?: string;
   message?: string;
+  createdAt: string;
+};
+
+export type SiteImage = {
+  id: string;
+  src: string;
+  alt: string;
+  label: string;
   createdAt: string;
 };
