@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Image, LockKeyhole, QrCode, Scissors, X } from "lucide-react";
+import { CalendarDays, Image, LockKeyhole, QrCode, X } from "lucide-react";
 
 export function Header() {
   const [isQrOpen, setIsQrOpen] = useState(false);
@@ -8,7 +8,7 @@ export function Header() {
   return (
     <header className="site-header">
       <Link to="/" className="brand" aria-label="Barber Booking System Startseite">
-        <Scissors size={24} />
+        <img className="brand-logo" src="/barbershop-barber.svg" alt="" aria-hidden="true" />
         <span>Adem</span>
       </Link>
       <nav aria-label="Hauptnavigation">

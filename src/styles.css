@@ -70,6 +70,14 @@ a {
   white-space: nowrap;
 }
 
+.brand-logo {
+  display: block;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  flex: 0 0 38px;
+}
+
 .site-header nav,
 .site-footer nav {
   display: flex;
@@ -1476,6 +1484,12 @@ p {
   .brand {
     width: 100%;
     justify-content: center;
+  }
+
+  .brand-logo {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
   }
 
   .site-header nav {
