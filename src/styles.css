@@ -373,6 +373,106 @@ p {
   margin-bottom: 26px;
 }
 
+.services-section {
+  padding-bottom: clamp(42px, 6vw, 72px);
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(18px, 3vw, 28px);
+}
+
+.service-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 254px;
+  overflow: hidden;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06)),
+    #2f343c;
+  color: #fff;
+  box-shadow: 0 18px 45px rgba(37, 31, 21, 0.12);
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+  backdrop-filter: blur(20px);
+}
+
+.service-card::before,
+.service-card::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.service-card::before {
+  width: 6rem;
+  height: 6rem;
+  top: 30%;
+  right: 7%;
+  border-radius: 50%;
+  background-color: #fab5704c;
+}
+
+.service-card::after {
+  width: 0;
+  height: 3rem;
+  top: 8%;
+  right: 5%;
+  border-left: 1px solid rgba(255, 255, 255, 0.58);
+}
+
+.service-card:hover {
+  border-color: rgba(255, 255, 255, 0.46);
+  box-shadow: 0 0 20px 1px #ffbb763f;
+  transform: translateY(-2px);
+}
+
+.service-card-title,
+.service-card-details {
+  position: relative;
+  z-index: 1;
+}
+
+.service-card-title {
+  max-width: 8ch;
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  font-weight: 500;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.service-card-details strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.service-card-details p {
+  margin: 0 0 0.7rem;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.9rem;
+  font-weight: 300;
+}
+
+.service-card-details span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.78rem;
+  font-weight: 300;
+}
+
+.service-card-details span:nth-of-type(1) {
+  margin-right: 0.2rem;
+  font-weight: 600;
+}
+
 .booking-layout,
 .admin-grid {
   display: grid;
@@ -1024,6 +1124,34 @@ p {
   color: var(--muted);
 }
 
+.service-admin-panel {
+  gap: 18px;
+}
+
+.service-admin-list {
+  display: grid;
+  gap: 14px;
+}
+
+.service-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.service-admin-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfaf7;
+}
+
+.service-admin-card h3 {
+  margin: 0;
+}
+
 .slots-overview-panel {
   order: -1;
 }
@@ -1458,6 +1586,7 @@ p {
   }
 
   .info-band,
+  .services-grid,
   .booking-layout,
   .admin-grid,
   .profile-admin-layout {
@@ -1718,7 +1847,8 @@ p {
   .cookie-category-card,
   .slot-row,
   .notification-box,
-  .admin-gallery-row {
+  .admin-gallery-row,
+  .service-admin-card {
     background: #171512;
   }
 

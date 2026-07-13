@@ -1,5 +1,12 @@
 import { del, put } from "@vercel/blob";
-import { getAdminSiteData, getStoredSiteData, saveStoredSiteData, type AppointmentSlot, type SiteImage } from "../_siteData.js";
+import {
+  getAdminSiteData,
+  getStoredSiteData,
+  saveStoredSiteData,
+  type AppointmentSlot,
+  type ServiceItem,
+  type SiteImage,
+} from "../_siteData.js";
 import { requireAdmin, sendError, type ApiRequest, type ApiResponse } from "../_auth.js";
 
 function timeToMinutes(time: string) {
@@ -32,6 +39,21 @@ function dataUrlToBuffer(dataUrl: string) {
     mimeType: match[1],
     buffer: Buffer.from(match[2], "base64"),
   };
+}
+
+function cleanServiceText(value: unknown, fallback: string) {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text.length > 0 ? text.slice(0, 160) : fallback;
+}
+
+function normalizeServices(services: ServiceItem[]) {
+  return services.slice(0, 6).map((service, index) => ({
+    id: service.id || `service-${index + 1}`,
+    title: cleanServiceText(service.title, `Service ${index + 1}`),
+    description: cleanServiceText(service.description, "Beschreibung folgt."),
+    duration: cleanServiceText(service.duration, "30 Minuten"),
+    price: cleanServiceText(service.price, "Preis auf Anfrage"),
+  }));
 }
 
 async function uploadImage(image: { src: string; label?: string; alt?: string }, folder: "hero" | "gallery") {
@@ -84,6 +106,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     const body = (req.body ?? {}) as {
       action?: string;
       image?: Omit<SiteImage, "id" | "createdAt" | "label"> & { label?: string };
+      services?: ServiceItem[];
       id?: string;
       slot?: Pick<AppointmentSlot, "date" | "startTime"> & { endTime?: string; blockedReason?: string };
     };
@@ -133,6 +156,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         ...data,
         galleryImages: data.galleryImages.filter((image) => image.id !== body.id),
       });
+      res.status(200).json(getAdminSiteData(nextData));
+      return;
+    }
+
+    if (body.action === "saveServices" && Array.isArray(body.services)) {
+      const nextData = await saveStoredSiteData({ ...data, services: normalizeServices(body.services) });
       res.status(200).json(getAdminSiteData(nextData));
       return;
     }

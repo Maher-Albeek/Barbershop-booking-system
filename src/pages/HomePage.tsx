@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, Scissors, ShieldCheck } from "lucide-react";
 import Stack from "../components/Stack";
-import { createBooking, defaultHeroImage, formatGermanDate, getGalleryImages, getHeroImage, getSlots } from "../lib/storage";
+import { createBooking, defaultHeroImage, formatGermanDate, getGalleryImages, getHeroImage, getServices, getSlots } from "../lib/storage";
 
 const bookingSchema = z.object({
   customerName: z.string().min(2, "Bitte vollständigen Namen eingeben."),
@@ -25,6 +25,7 @@ export default function HomePage() {
   const { data: slots = [] } = useQuery({ queryKey: ["slots"], queryFn: getSlots });
   const { data: galleryImages = [] } = useQuery({ queryKey: ["galleryImages"], queryFn: getGalleryImages });
   const { data: heroImage } = useQuery({ queryKey: ["heroImage"], queryFn: getHeroImage });
+  const { data: services = [] } = useQuery({ queryKey: ["services"], queryFn: getServices });
   const availableSlots = useMemo(
     () => slots.filter((slot) => slot.status === "available").sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
     [slots],
@@ -119,6 +120,25 @@ export default function HomePage() {
         <div>
           <Mail size={22} />
           <span>info@barber-booking.de</span>
+        </div>
+      </section>
+
+      <section className="section services-section" id="services">
+        <div className="section-heading">
+          <p className="eyebrow">Services</p>
+          <h2>Saubere Cuts, klare Linien und gepflegter Look</h2>
+        </div>
+        <div className="services-grid">
+          {services.map((service) => (
+            <article key={service.id} className="service-card">
+              <span className="service-card-title">{service.title}</span>
+              <div className="service-card-details">
+                <strong>{service.price}</strong>
+                <p>{service.description}</p>
+                <span>Dauer</span> <span>{service.duration}</span>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
 

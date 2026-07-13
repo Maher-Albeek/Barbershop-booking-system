@@ -31,20 +31,53 @@ export type SiteImage = {
   createdAt: string;
 };
 
+export type ServiceItem = {
+  id: string;
+  title: string;
+  description: string;
+  duration: string;
+  price: string;
+};
+
 export type SiteData = {
   heroImage: SiteImage | null;
   galleryImages: SiteImage[];
+  services: ServiceItem[];
   slots: AppointmentSlot[];
   bookings: Booking[];
 };
 
 const siteDataKey = "barbershop:siteData";
 const workingTimes = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
+const defaultServices: ServiceItem[] = [
+  {
+    id: "service-haircut",
+    title: "Haarschnitt",
+    description: "Klassische und moderne Schnitte mit sauberem Finish.",
+    duration: "30 Minuten",
+    price: "ab 20 EUR",
+  },
+  {
+    id: "service-beard",
+    title: "Bartpflege",
+    description: "Konturen, Form und Pflege für einen gepflegten Bart.",
+    duration: "15 Minuten",
+    price: "ab 15 EUR",
+  },
+  {
+    id: "service-complete",
+    title: "Komplettpaket",
+    description: "Haarschnitt und Bart in einem Termin abgestimmt.",
+    duration: "1 Stunde",
+    price: "ab 30 EUR",
+  },
+];
 
 function emptySiteData(): SiteData {
   return {
     heroImage: null,
     galleryImages: [],
+    services: defaultServices,
     slots: [],
     bookings: [],
   };
@@ -108,6 +141,7 @@ function normalizeSiteData(value: Partial<SiteData> | null | undefined): SiteDat
     ...value,
     heroImage: value?.heroImage ?? null,
     galleryImages: Array.isArray(value?.galleryImages) ? value.galleryImages : [],
+    services: Array.isArray(value?.services) && value.services.length > 0 ? value.services : defaultServices,
     slots: Array.isArray(value?.slots) ? value.slots : [],
     bookings: Array.isArray(value?.bookings) ? value.bookings : [],
   };
@@ -132,6 +166,7 @@ export function getPublicSiteData(data: SiteData) {
   return {
     heroImage: data.heroImage,
     galleryImages: data.galleryImages,
+    services: data.services,
     slots: generateSlots(data.slots),
   };
 }

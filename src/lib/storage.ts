@@ -1,4 +1,4 @@
-import type { AppointmentSlot, Booking, SiteImage } from "./types";
+import type { AppointmentSlot, Booking, ServiceItem, SiteImage } from "./types";
 
 export const defaultHeroImage =
   "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1800&q=82";
@@ -32,6 +32,29 @@ export const defaultGalleryImages: SiteImage[] = [
     createdAt: "default",
   },
 ];
+export const defaultServices: ServiceItem[] = [
+  {
+    id: "service-haircut",
+    title: "Haarschnitt",
+    description: "Klassische und moderne Schnitte mit sauberem Finish.",
+    duration: "30 Minuten",
+    price: "ab 20 EUR",
+  },
+  {
+    id: "service-beard",
+    title: "Bartpflege",
+    description: "Konturen, Form und Pflege für einen gepflegten Bart.",
+    duration: "15 Minuten",
+    price: "ab 15 EUR",
+  },
+  {
+    id: "service-complete",
+    title: "Komplettpaket",
+    description: "Haarschnitt und Bart in einem Termin abgestimmt.",
+    duration: "1 Stunde",
+    price: "ab 30 EUR",
+  },
+];
 
 const workingTimes = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
 const closingTime = "19:00";
@@ -39,6 +62,7 @@ const closingTime = "19:00";
 type PublicSiteData = {
   heroImage: SiteImage | null;
   galleryImages: SiteImage[];
+  services: ServiceItem[];
   slots: AppointmentSlot[];
 };
 
@@ -93,6 +117,7 @@ function withFallbackGallery<T extends PublicSiteData>(data: T): T {
   return {
     ...data,
     galleryImages: data.galleryImages.length > 0 ? data.galleryImages : defaultGalleryImages,
+    services: data.services.length > 0 ? data.services : defaultServices,
   };
 }
 
@@ -177,6 +202,7 @@ export async function getPublicSiteData() {
     return {
       heroImage: null,
       galleryImages: defaultGalleryImages,
+      services: defaultServices,
       slots: [],
     };
   }
@@ -206,6 +232,17 @@ export async function deleteGalleryImage(id: string) {
 
 export async function getHeroImage() {
   return (await getPublicSiteData()).heroImage;
+}
+
+export async function getServices() {
+  return (await getPublicSiteData()).services;
+}
+
+export async function saveServices(services: ServiceItem[]) {
+  return apiRequest<AdminSiteData>("/api/admin/site-data", {
+    method: "PATCH",
+    body: JSON.stringify({ action: "saveServices", services }),
+  });
 }
 
 export async function saveHeroImage(image: Omit<SiteImage, "id" | "createdAt" | "label">) {

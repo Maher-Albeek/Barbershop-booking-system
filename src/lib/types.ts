@@ -28,3 +28,11 @@ export type SiteImage = {
   label: string;
   createdAt: string;
 };
+
+export type ServiceItem = {
+  id: string;
+  title: string;
+  description: string;
+  duration: string;
+  price: string;
+};
