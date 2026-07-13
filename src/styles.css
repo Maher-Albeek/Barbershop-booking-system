@@ -344,6 +344,37 @@ p {
   transform: scale(0.94);
 }
 
+.content-background {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #0e0d0d;
+}
+
+.content-ferrofluid,
+.content-background-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.content-ferrofluid {
+  z-index: 0;
+}
+
+.content-background-shade {
+  z-index: 1;
+  background:
+    radial-gradient(circle at 20% 14%, rgba(126, 126, 126, 0.5), transparent 28%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.76), rgba(37, 37, 37, 0.9) 52%, rgba(85, 82, 75, 0.8));
+}
+
+.content-background > .info-band,
+.content-background > .section {
+  position: relative;
+  z-index: 2;
+}
+
 .info-band {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

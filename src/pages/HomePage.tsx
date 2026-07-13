@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, Scissors, ShieldCheck } from "lucide-react";
+import Ferrofluid from "../components/Ferrofluid";
 import Stack from "../components/Stack";
 import { createBooking, defaultHeroImage, formatGermanDate, getGalleryImages, getHeroImage, getServices, getSlots } from "../lib/storage";
 
@@ -107,6 +108,24 @@ export default function HomePage() {
           </a>
         </div>
       </section>
+
+      <div className="content-background">
+        <Ferrofluid
+          className="content-ferrofluid"
+          colors={["#f2c19d", "#b4552d", "#79351f", "#f7f4ed"]}
+          speed={0.28}
+          scale={1.55}
+          turbulence={0.82}
+          fluidity={0.2}
+          rimWidth={0.32}
+          sharpness={2.1}
+          shimmer={0.85}
+          glow={1.2}
+          flowDirection="down"
+          opacity={0.72}
+          mouseInteraction={false}
+        />
+        <div className="content-background-shade" aria-hidden="true" />
 
       <section className="info-band" aria-label="Standort und Öffnungszeiten">
         <div>
@@ -236,6 +255,7 @@ export default function HomePage() {
           {bookingNotice && <p className="success-message">{bookingNotice}</p>}
         </form>
       </section>
+      </div>
 
     </>
   );
