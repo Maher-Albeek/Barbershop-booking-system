@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, Scissors, ShieldCheck } from "lucide-react";
 import Stack from "../components/Stack";
 import { createBooking, defaultHeroImage, formatGermanDate, getGalleryImages, getHeroImage, getSlots } from "../lib/storage";
 
@@ -98,7 +98,11 @@ export default function HomePage() {
         <div className="hero-content">
           <h1>Adem</h1>
           <a className="primary-action" href="#booking">
-            Reservieren
+            <span className="primary-action-text">Reservieren</span>
+            <span className="primary-action-icon" aria-hidden="true">
+              <Scissors className="primary-action-glyph" size={18} strokeWidth={2.4} />
+            </span>
+            <span className="primary-action-overlay" aria-hidden="true" />
           </a>
         </div>
       </section>

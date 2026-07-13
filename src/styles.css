@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Manufacturing+Consent&display=swap");
+
 :root {
   color-scheme: light;
   font-family:
@@ -154,6 +156,8 @@ h1 {
 }
 
 .hero h1 {
+  font-family: "Manufacturing Consent", Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(4rem, 16vw, 10rem);
   max-width: none;
   text-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
@@ -198,14 +202,138 @@ p {
 }
 
 .hero .primary-action {
+  --hero-action-width: clamp(210px, 20vw, 260px);
+  --hero-action-height: 75px;
+  --hero-action-radius: 9999px;
+  --hero-action-trim: 15%;
   position: absolute;
   left: 50%;
   bottom: clamp(30px, 7vw, 64px);
   transform: translateX(-50%);
-  min-width: 168px;
-  width: fit-content;
-  padding-inline: 24px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  z-index: 5;
+  width: var(--hero-action-width);
+  min-width: 0;
+  height: var(--hero-action-height);
+  min-height: 0;
+  padding: 0 14px 0 24px;
+  gap: 16px;
+  border: 1px double rgba(255, 255, 255, 0.18);
+  border-radius: var(--hero-action-radius);
+  background: rgba(255, 255, 255, 0.18);
+  color: #f7f4ed;
+  backdrop-filter: blur(4px);
+  filter: brightness(0.96) contrast(1.12);
+  box-shadow:
+    inset 2px -2px 1px -1px rgba(255, 255, 255, 0.9),
+    inset -2px 2px 1px -1px rgba(255, 255, 255, 0.9),
+    inset 6px -6px 1px -6px rgba(255, 255, 255, 0.55),
+    inset -6px 6px 1px -6px rgba(255, 255, 255, 0.55),
+    inset 0 0 2px rgba(0, 0, 0, 0.8),
+    0 16px 30px rgba(0, 0, 0, 0.32);
+  transition:
+    background 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.hero .primary-action::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 35%;
+  left: 50%;
+  width: calc(var(--hero-action-width) - 16px);
+  height: calc(var(--hero-action-height) - 16px);
+  border: 1px solid rgba(0, 0, 0, 0.9);
+  border-radius: var(--hero-action-radius);
+  filter: blur(8px);
+  transform: translateX(-50%);
+}
+
+.hero .primary-action::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: var(--hero-action-radius);
+  background: linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.8) 0%,
+    transparent var(--hero-action-trim),
+    transparent calc(100% - var(--hero-action-trim)),
+    rgba(255, 255, 255, 0.8) 100%
+  );
+  filter: blur(7px);
+  pointer-events: none;
+}
+
+.primary-action-text {
+  position: relative;
+  z-index: 2;
+  color: #f7f4ed;
+  font-size: clamp(1.12rem, 2vw, 1.55rem);
+  font-weight: 900;
+  line-height: 1;
+  filter: drop-shadow(0 25px 3px rgba(0, 0, 0, 0.18));
+  overflow-wrap: anywhere;
+}
+
+.primary-action-icon {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 50%;
+  background: #3e3e3e;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s ease;
+}
+
+.primary-action-glyph {
+  color: #f5f5f5;
+  filter: drop-shadow(0 25px 3px rgba(102, 102, 102, 0.2));
+}
+
+.primary-action-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--hero-action-radius);
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+.hero .primary-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translate(-50%, -3px);
+  box-shadow:
+    inset 2px -2px 1px -1px rgba(255, 255, 255, 0.9),
+    inset -2px 2px 1px -1px rgba(255, 255, 255, 0.9),
+    inset 6px -6px 1px -6px rgba(255, 255, 255, 0.55),
+    inset -6px 6px 1px -6px rgba(255, 255, 255, 0.55),
+    inset 0 0 2px rgba(0, 0, 0, 0.8),
+    0 20px 34px rgba(0, 0, 0, 0.36);
+}
+
+.hero .primary-action:hover .primary-action-icon {
+  transform: scale(1.1);
+}
+
+.hero .primary-action:active {
+  transform: translateX(-50%) scale(0.94);
+}
+
+.hero .primary-action:active .primary-action-text {
+  color: #fff;
+}
+
+.hero .primary-action:active .primary-action-icon {
+  transform: scale(0.94);
 }
 
 .info-band {
@@ -1396,7 +1524,19 @@ p {
   }
 
   .hero .primary-action {
-    width: min(100%, 220px);
+    --hero-action-width: min(260px, calc(100vw - 44px));
+    --hero-action-height: 68px;
+    padding-inline: 20px 12px;
+  }
+
+  .primary-action-text {
+    font-size: 1.14rem;
+  }
+
+  .primary-action-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
   }
 
   .info-band div {
