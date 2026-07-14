@@ -14,6 +14,14 @@ function timeToMinutes(time: string) {
   return hours * 60 + minutes;
 }
 
+function isTime(value: string | undefined) {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+function rangesOverlap(startA: number, endA: number, startB: number, endB: number) {
+  return startA < endB && endA > startB;
+}
+
 function extensionFromMimeType(mimeType: string) {
   if (mimeType === "image/avif") return "avif";
   if (mimeType === "image/webp") return "webp";
@@ -167,24 +175,37 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
 
     if (body.action === "blockSlotRange" && body.slot?.date && body.slot.startTime && body.slot.endTime) {
+      if (!isTime(body.slot.startTime) || !isTime(body.slot.endTime)) {
+        sendError(res, 400, "Uhrzeit ist ungueltig.");
+        return;
+      }
       const startMinutes = timeToMinutes(body.slot.startTime);
       const endMinutes = timeToMinutes(body.slot.endTime);
+      if (endMinutes <= startMinutes) {
+        sendError(res, 400, "Endzeit muss nach der Startzeit liegen.");
+        return;
+      }
       const publicData = getAdminSiteData(data);
       const targetSlots = publicData.slots.filter(
-        (item) =>
-          item.date === body.slot?.date &&
-          item.status !== "booked" &&
-          timeToMinutes(item.startTime) >= startMinutes &&
-          timeToMinutes(item.startTime) < endMinutes,
+        (item) => {
+          const slotStart = timeToMinutes(item.startTime);
+          const slotEnd = slotStart + item.duration;
+          return item.date === body.slot?.date && item.status === "available" && rangesOverlap(slotStart, slotEnd, startMinutes, endMinutes);
+        },
       );
       const targetIds = new Set(targetSlots.map((item) => item.id));
-      const nextSlots = publicData.slots.map((item) =>
-        targetIds.has(item.id)
-          ? { ...item, status: "blocked" as const, blockedReason: body.slot?.blockedReason?.trim() || undefined }
-          : item,
-      );
+      const nextSlots = publicData.slots.map((item) => {
+        if (!targetIds.has(item.id)) return item;
+        return {
+          ...item,
+          status: "blocked" as const,
+          blockedReason: body.slot?.blockedReason?.trim() || undefined,
+          blockedStartTime: body.slot?.startTime,
+          blockedEndTime: body.slot?.endTime,
+        };
+      });
       const nextData = await saveStoredSiteData({ ...data, slots: nextSlots });
-      res.status(200).json({ ...getAdminSiteData(nextData), changedSlots: targetSlots });
+      res.status(200).json({ ...getAdminSiteData(nextData), changedSlots: nextSlots.filter((item) => targetIds.has(item.id)) });
       return;
     }
 

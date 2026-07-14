@@ -9,13 +9,11 @@ import {
   deleteGalleryImage,
   deleteHeroImage,
   formatGermanDate,
-  getBlockEndTimes,
   getBookings,
   getGalleryImages,
   getHeroImage,
   getServices,
   getSlots,
-  getWorkingTimes,
   saveHeroImage,
   saveServices,
   unblockSlot,
@@ -38,8 +36,28 @@ function timeToMinutes(time: string) {
   return hours * 60 + minutes;
 }
 
+function rangesOverlap(startA: number, endA: number, startB: number, endB: number) {
+  return startA < endB && endA > startB;
+}
+
+function getBlockedDisplayRange(slot: AppointmentSlot) {
+  return {
+    startTime: slot.blockedStartTime ?? slot.startTime,
+    endTime: slot.blockedEndTime ?? addMinutes(slot.startTime, slot.duration),
+  };
+}
+
 function addMinutes(time: string, duration: number) {
   const totalMinutes = timeToMinutes(time) + duration;
+  const hours = Math.floor(totalMinutes / 60)
+    .toString()
+    .padStart(2, "0");
+  const minutes = (totalMinutes % 60).toString().padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
+function addMinutesWithinDay(time: string, duration: number) {
+  const totalMinutes = Math.min(23 * 60 + 59, timeToMinutes(time) + duration);
   const hours = Math.floor(totalMinutes / 60)
     .toString()
     .padStart(2, "0");
@@ -219,9 +237,6 @@ export default function AdminPage() {
   const { data: services = [] } = useQuery({ queryKey: ["services"], queryFn: getServices });
   const { data: galleryImages = [] } = useQuery({ queryKey: ["galleryImages"], queryFn: getGalleryImages });
   const { data: heroImage } = useQuery({ queryKey: ["heroImage"], queryFn: getHeroImage });
-  const workingTimes = getWorkingTimes();
-  const blockEndTimes = getBlockEndTimes();
-  const endTimeOptions = blockEndTimes.filter((time) => timeToMinutes(time) > timeToMinutes(blockedTimeForm.startTime));
   const blockedSlots = useMemo(
     () =>
       slots
@@ -386,23 +401,29 @@ export default function AdminPage() {
       return;
     }
     const existingBlockedSlots = blockedSlots.filter(
-      (slot) =>
-        slot.date === blockedTimeForm.date &&
-        timeToMinutes(slot.startTime) >= startMinutes &&
-        timeToMinutes(slot.startTime) < endMinutes,
+      (slot) => {
+        const slotStart = timeToMinutes(slot.startTime);
+        return (
+          slot.date === blockedTimeForm.date &&
+          rangesOverlap(slotStart, slotStart + slot.duration, startMinutes, endMinutes)
+        );
+      },
     );
     if (existingBlockedSlots.length > 0) {
       const times = existingBlockedSlots
-        .map((slot) => `${slot.startTime} - ${addMinutes(slot.startTime, slot.duration)}`)
+        .map((slot) => {
+          const blockedRange = getBlockedDisplayRange(slot);
+          return `${blockedRange.startTime} - ${blockedRange.endTime}`;
+        })
         .join(", ");
       setBlockError(`Diese Zeit ist bereits blockiert: ${times}.`);
       return;
     }
     const existingBookedSlots = bookedSlots.filter(
-      (slot) =>
-        slot.date === blockedTimeForm.date &&
-        timeToMinutes(slot.startTime) >= startMinutes &&
-        timeToMinutes(slot.startTime) < endMinutes,
+      (slot) => {
+        const slotStart = timeToMinutes(slot.startTime);
+        return slot.date === blockedTimeForm.date && rangesOverlap(slotStart, slotStart + slot.duration, startMinutes, endMinutes);
+      },
     );
     if (existingBookedSlots.length > 0) {
       const times = existingBookedSlots
@@ -594,35 +615,52 @@ export default function AdminPage() {
           </label>
           <label>
             Startzeit
-            <select
+            <input
+              type="time"
+              step="60"
+              required
               value={blockedTimeForm.startTime}
               onChange={(event) => {
                 const startTime = event.target.value;
                 const nextEndTime =
-                  timeToMinutes(blockedTimeForm.endTime) > timeToMinutes(startTime) ? blockedTimeForm.endTime : addMinutes(startTime, 60);
+                  timeToMinutes(blockedTimeForm.endTime) > timeToMinutes(startTime) ? blockedTimeForm.endTime : addMinutes(startTime, 1);
                 setBlockedTimeForm({ ...blockedTimeForm, startTime, endTime: nextEndTime });
               }}
-            >
-              {workingTimes.map((time) => (
-                <option key={time} value={time}>
-                  {time} Uhr
-                </option>
-              ))}
-            </select>
+            />
           </label>
           <label>
             Endzeit
-            <select
+            <input
+              type="time"
+              step="60"
+              required
               value={blockedTimeForm.endTime}
               onChange={(event) => setBlockedTimeForm({ ...blockedTimeForm, endTime: event.target.value })}
-            >
-              {endTimeOptions.map((time) => (
-                <option key={time} value={time}>
-                  {time} Uhr
-                </option>
-              ))}
-            </select>
+            />
           </label>
+          <div className="quick-time-actions" aria-label="Schnelle Zeitwahl">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setBlockedTimeForm({ ...blockedTimeForm, endTime: addMinutesWithinDay(blockedTimeForm.startTime, 1) })}
+            >
+              1 Minute
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setBlockedTimeForm({ ...blockedTimeForm, endTime: addMinutesWithinDay(blockedTimeForm.startTime, 120) })}
+            >
+              2 Stunden
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setBlockedTimeForm({ ...blockedTimeForm, startTime: "00:00", endTime: "23:59" })}
+            >
+              Ganzer Tag
+            </button>
+          </div>
           <label>
             Grund
             <textarea
@@ -767,6 +805,7 @@ export default function AdminPage() {
             {visibleOccupiedSlotsForSelectedDate.map((slot) => {
               const booking = bookingsBySlotId.get(slot.id);
               const isBooked = slot.status === "booked";
+              const blockedRange = getBlockedDisplayRange(slot);
               return (
                 <article key={slot.id} className={`slot-row ${isBooked ? "slot-row-booked" : "slot-row-blocked"}`}>
                   {isBooked ? (
@@ -786,7 +825,8 @@ export default function AdminPage() {
                   )}
                   <div>
                     <strong>
-                      {formatGermanDate(slot.date, slot.startTime)} · {slot.startTime} - {addMinutes(slot.startTime, slot.duration)}
+                      {formatGermanDate(slot.date, slot.startTime)} -{" "}
+                      {isBooked ? `${slot.startTime} - ${addMinutes(slot.startTime, slot.duration)}` : `${blockedRange.startTime} - ${blockedRange.endTime}`}
                     </strong>
                     {isBooked ? (
                       <>

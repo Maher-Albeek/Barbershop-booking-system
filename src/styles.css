@@ -1183,6 +1183,17 @@ p {
   margin: 0;
 }
 
+.quick-time-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.quick-time-actions .secondary-button {
+  width: 100%;
+  min-width: 0;
+}
+
 .slots-overview-panel {
   order: -1;
 }

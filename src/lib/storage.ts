@@ -57,8 +57,6 @@ export const defaultServices: ServiceItem[] = [
 ];
 
 const workingTimes = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00"];
-const closingTime = "19:00";
-
 type PublicSiteData = {
   heroImage: SiteImage | null;
   galleryImages: SiteImage[];
@@ -76,10 +74,6 @@ type ChangedSlotsResponse = AdminSiteData & {
 
 export function getWorkingTimes() {
   return workingTimes;
-}
-
-export function getBlockEndTimes() {
-  return [...workingTimes.slice(1), closingTime];
 }
 
 function timeToMinutes(time: string) {
