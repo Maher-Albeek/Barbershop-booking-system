@@ -918,7 +918,7 @@ export default function AdminPage() {
         <form className="form-panel" onSubmit={uploadHeroImage}>
           <h2>Hero-Bild</h2>
           <div className="admin-image-preview">
-            <img src={heroImage?.src ?? defaultHeroImage} alt={heroImage?.alt ?? "Barbershop Hero"} />
+            <img src={heroImage?.src ?? defaultHeroImage} alt={heroImage?.alt ?? "Barbershop Hero"} loading="lazy" decoding="async" />
           </div>
           <label>
             Bild hochladen
@@ -968,7 +968,7 @@ export default function AdminPage() {
           <div className="admin-gallery-list">
             {galleryImages.map((image) => (
               <article key={image.id} className="admin-gallery-row">
-                <img src={image.src} alt={image.alt} />
+                <img src={image.src} alt={image.alt} loading="lazy" decoding="async" />
                 <div>
                   <strong>{image.label}</strong>
                   <span>{image.createdAt === "default" ? "Standardbild" : "Upload"}</span>

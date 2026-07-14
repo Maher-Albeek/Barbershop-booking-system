@@ -1,12 +1,12 @@
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, Scissors, ShieldCheck } from "lucide-react";
-import Ferrofluid from "../components/Ferrofluid";
-import Stack from "../components/Stack";
-import { createBooking, defaultHeroImage, formatGermanDate, getGalleryImages, getHeroImage, getServices, getSlots } from "../lib/storage";
+import { ResponsiveImage } from "../components/ResponsiveImage";
+import { createBooking, defaultHeroImage, formatGermanDate, getPublicSiteData } from "../lib/storage";
+import type { ServiceItem, SiteImage } from "../lib/types";
 
 const bookingSchema = z.object({
   customerName: z.string().min(2, "Bitte vollständigen Namen eingeben."),
@@ -20,14 +20,113 @@ const bookingSchema = z.object({
 
 type BookingForm = z.infer<typeof bookingSchema>;
 
+const ferrofluidColors = ["#f2c19d", "#b4552d", "#79351f", "#f7f4ed"];
+const stackAnimationConfig = { stiffness: 260, damping: 24 };
+const Ferrofluid = lazy(() => import("../components/Ferrofluid"));
+const Stack = lazy(() => import("../components/Stack"));
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() => (typeof window === "undefined" ? false : window.matchMedia(query).matches));
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query);
+    const updateMatches = () => setMatches(mediaQuery.matches);
+    updateMatches();
+    mediaQuery.addEventListener("change", updateMatches);
+    return () => mediaQuery.removeEventListener("change", updateMatches);
+  }, [query]);
+
+  return matches;
+}
+
+function useNearViewport<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [isNearViewport, setIsNearViewport] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || isNearViewport) return;
+    if (!("IntersectionObserver" in window)) {
+      setIsNearViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsNearViewport(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "420px 0px" },
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [isNearViewport]);
+
+  return [ref, isNearViewport] as const;
+}
+
+const GalleryStackCard = memo(function GalleryStackCard({ image }: { image: SiteImage }) {
+  return (
+    <div className="gallery-stack-card">
+      <ResponsiveImage
+        src={image.src}
+        alt={image.alt}
+        sizes="(max-width: 560px) min(100vw - 28px, 340px), 440px"
+        widths={[320, 480, 680, 900]}
+        width={680}
+        height={850}
+      />
+    </div>
+  );
+});
+
+const GalleryMasonryCard = memo(function GalleryMasonryCard({ image }: { image: SiteImage }) {
+  return (
+    <figure className="gallery-masonry-card">
+      <ResponsiveImage
+        src={image.src}
+        alt={image.alt}
+        sizes="(max-width: 860px) calc(100vw - 40px), 32vw"
+        widths={[360, 560, 760, 1000]}
+        width={760}
+        height={950}
+      />
+    </figure>
+  );
+});
+
+const ServiceCard = memo(function ServiceCard({ service }: { service: ServiceItem }) {
+  return (
+    <article className="service-card">
+      <span className="service-card-title">{service.title}</span>
+      <div className="service-card-details">
+        <strong>{service.price}</strong>
+        <p>{service.description}</p>
+        <span>Dauer</span> <span>{service.duration}</span>
+      </div>
+    </article>
+  );
+});
+
 export default function HomePage() {
   const queryClient = useQueryClient();
   const [bookingNotice, setBookingNotice] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
-  const { data: slots = [] } = useQuery({ queryKey: ["slots"], queryFn: getSlots });
-  const { data: galleryImages = [] } = useQuery({ queryKey: ["galleryImages"], queryFn: getGalleryImages });
-  const { data: heroImage } = useQuery({ queryKey: ["heroImage"], queryFn: getHeroImage });
-  const { data: services = [] } = useQuery({ queryKey: ["services"], queryFn: getServices });
+  const [galleryRef, isGalleryNearViewport] = useNearViewport<HTMLElement>();
+  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const isMobile = useMediaQuery("(max-width: 560px)");
+  const { data: siteData } = useQuery({
+    queryKey: ["publicSiteData"],
+    queryFn: getPublicSiteData,
+    staleTime: 60_000,
+  });
+  const slots = siteData?.slots ?? [];
+  const galleryImages = siteData?.galleryImages ?? [];
+  const heroImage = siteData?.heroImage ?? null;
+  const services = siteData?.services ?? [];
   const availableSlots = useMemo(
     () => slots.filter((slot) => slot.status === "available").sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
     [slots],
@@ -42,22 +141,14 @@ export default function HomePage() {
       return [];
     }
 
-    return galleryImages.map((image) => (
-      <div key={image.id} className="gallery-stack-card">
-        <img src={image.src} alt={image.alt} loading="lazy" />
-      </div>
-    ));
+    return galleryImages.map((image) => <GalleryStackCard key={image.id} image={image} />);
   }, [galleryImages]);
   const galleryMasonryCards = useMemo(() => {
     if (galleryImages.length === 0) {
       return [];
     }
 
-    return galleryImages.map((image) => (
-      <figure key={image.id} className="gallery-masonry-card">
-        <img src={image.src} alt={image.alt} loading="lazy" />
-      </figure>
-    ));
+    return galleryImages.map((image) => <GalleryMasonryCard key={image.id} image={image} />);
   }, [galleryImages]);
 
   const bookingForm = useForm<BookingForm>({
@@ -70,6 +161,14 @@ export default function HomePage() {
       setSelectedDate(bookableDates[0]);
     }
   }, [bookableDates, selectedDate]);
+
+  const updateSelectedDate = useCallback(
+    (date: string) => {
+      setSelectedDate((current) => (current === date ? current : date));
+      bookingForm.setValue("slotId", "", { shouldValidate: true });
+    },
+    [bookingForm],
+  );
 
   async function reserveAppointment(data: BookingForm) {
     try {
@@ -86,7 +185,7 @@ export default function HomePage() {
         `Termin reserviert. Neue Terminbuchung: ${booking.customerName}, ${slot ? `${formatGermanDate(slot.date, slot.startTime)} um ${slot.startTime} Uhr` : ""}.`,
       );
       bookingForm.reset();
-      queryClient.invalidateQueries({ queryKey: ["slots"] });
+      queryClient.invalidateQueries({ queryKey: ["publicSiteData"] });
     } catch (error) {
       setBookingNotice(error instanceof Error ? error.message : "Buchung fehlgeschlagen.");
     }
@@ -94,11 +193,18 @@ export default function HomePage() {
 
   return (
     <>
-      <section
-        className="hero"
-        id="home"
-        style={{ "--hero-image": `url("${heroImage?.src ?? defaultHeroImage}")` } as CSSProperties}
-      >
+      <section className="hero" id="home">
+        <ResponsiveImage
+          pictureClassName="hero-media"
+          src={heroImage?.src ?? defaultHeroImage}
+          alt={heroImage?.alt ?? "Adem Barbershop"}
+          sizes="100vw"
+          widths={[560, 860, 1200, 1600, 2200]}
+          width={1600}
+          height={1000}
+          loading="eager"
+          fetchPriority="high"
+        />
         <div className="hero-content">
           <h1>Adem</h1>
           <a className="primary-action" href="#booking">
@@ -112,21 +218,26 @@ export default function HomePage() {
       </section>
 
       <div className="content-background">
-        <Ferrofluid
-          className="content-ferrofluid"
-          colors={["#f2c19d", "#b4552d", "#79351f", "#f7f4ed"]}
-          speed={0.28}
-          scale={1.55}
-          turbulence={0.82}
-          fluidity={0.2}
-          rimWidth={0.32}
-          sharpness={2.1}
-          shimmer={0.85}
-          glow={1.2}
-          flowDirection="down"
-          opacity={0.72}
-          mouseInteraction={false}
-        />
+        {!isMobile && !prefersReducedMotion ? (
+          <Suspense fallback={null}>
+            <Ferrofluid
+              className="content-ferrofluid"
+              colors={ferrofluidColors}
+              dpr={1}
+              speed={0.28}
+              scale={1.55}
+              turbulence={0.82}
+              fluidity={0.2}
+              rimWidth={0.32}
+              sharpness={2.1}
+              shimmer={0.85}
+              glow={1.2}
+              flowDirection="down"
+              opacity={0.72}
+              mouseInteraction={false}
+            />
+          </Suspense>
+        ) : null}
         <div className="content-background-shade" aria-hidden="true" />
 
       <section className="info-band" aria-label="Standort und Öffnungszeiten">
@@ -151,19 +262,12 @@ export default function HomePage() {
         </div>
         <div className="services-grid">
           {services.map((service) => (
-            <article key={service.id} className="service-card">
-              <span className="service-card-title">{service.title}</span>
-              <div className="service-card-details">
-                <strong>{service.price}</strong>
-                <p>{service.description}</p>
-                <span>Dauer</span> <span>{service.duration}</span>
-              </div>
-            </article>
+            <ServiceCard key={service.id} service={service} />
           ))}
         </div>
       </section>
 
-      <section className="section" id="gallery">
+      <section className="section" id="gallery" ref={galleryRef}>
         <div className="section-heading">
           <p className="eyebrow">Galerie</p>
           <h2>Unsere Arbeiten – Präzision, Stil und perfekte Ergebnisse</h2>
@@ -171,15 +275,19 @@ export default function HomePage() {
         {galleryStackCards.length > 0 ? (
           <>
             <div className="gallery-masonry">{galleryMasonryCards}</div>
-            <div className="gallery-stack">
-              <Stack
-                cards={galleryStackCards}
-                randomRotation
-                sensitivity={70}
-                mobileBreakpoint={561}
-                animationConfig={{ stiffness: 260, damping: 24 }}
-              />
-            </div>
+            {isMobile && isGalleryNearViewport ? (
+              <div className="gallery-stack">
+                <Suspense fallback={null}>
+                  <Stack
+                    cards={galleryStackCards}
+                    randomRotation
+                    sensitivity={70}
+                    mobileBreakpoint={561}
+                    animationConfig={stackAnimationConfig}
+                  />
+                </Suspense>
+              </div>
+            ) : null}
           </>
         ) : null}
       </section>
@@ -237,10 +345,7 @@ export default function HomePage() {
                 value={selectedDate}
                 min={bookableDates[0]}
                 max={bookableDates[bookableDates.length - 1]}
-                onChange={(event) => {
-                  setSelectedDate(event.target.value);
-                  bookingForm.setValue("slotId", "", { shouldValidate: true });
-                }}
+                onChange={(event) => updateSelectedDate(event.target.value)}
               />
             </label>
             <label>

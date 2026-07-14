@@ -8,7 +8,7 @@ export function Header() {
   return (
     <header className="site-header">
       <Link to="/" className="brand" aria-label="Barber Booking System Startseite">
-        <img className="brand-logo" src="/barbershop-barber.svg" alt="" aria-hidden="true" />
+        <img className="brand-logo" src="/barbershop-barber.svg" alt="" aria-hidden="true" width="42" height="42" decoding="async" />
         <span>Adem</span>
       </Link>
       <nav aria-label="Hauptnavigation">
@@ -49,6 +49,8 @@ export function Header() {
               alt="QR Code zur Adem Terminbuchung"
               width="220"
               height="220"
+              loading="lazy"
+              decoding="async"
             />
           </section>
         </div>

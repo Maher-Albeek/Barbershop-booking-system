@@ -1,24 +1,36 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App";
-import HomePage from "./pages/HomePage";
-import AdminPage from "./pages/AdminPage";
-import LegalPage from "./pages/LegalPage";
 import "./styles.css";
 
-const queryClient = new QueryClient();
+const HomePage = lazy(() => import("./pages/HomePage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const LegalPage = lazy(() => import("./pages/LegalPage"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  },
+});
+
+function lazyRoute(element: React.ReactNode) {
+  return <Suspense fallback={<div className="route-loading" aria-live="polite" />}>{element}</Suspense>;
+}
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: <HomePage /> },
-      { path: "admin", element: <AdminPage /> },
-      { path: "impressum", element: <LegalPage type="impressum" /> },
-      { path: "datenschutz", element: <LegalPage type="datenschutz" /> },
+      { index: true, element: lazyRoute(<HomePage />) },
+      { path: "admin", element: lazyRoute(<AdminPage />) },
+      { path: "impressum", element: lazyRoute(<LegalPage type="impressum" />) },
+      { path: "datenschutz", element: lazyRoute(<LegalPage type="datenschutz" />) },
     ],
   },
 ]);
