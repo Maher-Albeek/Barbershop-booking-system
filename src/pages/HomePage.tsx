@@ -6,7 +6,7 @@ import { z } from "zod";
 import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, Scissors, ShieldCheck } from "lucide-react";
 import { ResponsiveImage } from "../components/ResponsiveImage";
 import { createBooking, defaultHeroImage, formatGermanDate, getPublicSiteData } from "../lib/storage";
-import type { ServiceItem, SiteImage } from "../lib/types";
+import type { SiteImage } from "../lib/types";
 
 const bookingSchema = z.object({
   customerName: z.string().min(2, "Bitte vollständigen Namen eingeben."),
@@ -93,41 +93,6 @@ const GalleryMasonryCard = memo(function GalleryMasonryCard({ image }: { image: 
         height={950}
       />
     </figure>
-  );
-});
-
-const ServiceCard = memo(function ServiceCard({ service }: { service: ServiceItem }) {
-  const isHairService = service.id === "service-haircut";
-  const isBeardService = service.id === "service-beard";
-  const isCompleteService = service.id === "service-complete";
-  const serviceImage = isHairService
-    ? "/hair-service.avif"
-    : isBeardService
-      ? "/beard-service.avif"
-      : isCompleteService
-        ? "/complete-service.avif"
-        : "";
-
-  return (
-    <article
-      className={`service-card${isHairService ? " service-card-hair" : ""}${isBeardService ? " service-card-beard" : ""}${
-        isCompleteService ? " service-card-complete" : ""
-      }`}
-    >
-      {serviceImage ? (
-        <span className="service-card-image" aria-hidden="true">
-          <img src={serviceImage} alt="" loading="lazy" />
-        </span>
-      ) : null}
-      <div className="service-card-copy">
-        <span className="service-card-title">{service.title}</span>
-        <p>{service.description}</p>
-      </div>
-      <div className="service-card-details">
-        <strong>{service.price}</strong>
-        <span>Dauer</span> <span>{service.duration}</span>
-      </div>
-    </article>
   );
 });
 
@@ -251,18 +216,6 @@ export default function HomePage() {
         <div>
           <Mail size={22} />
           <span>info@barber-booking.de</span>
-        </div>
-      </section>
-
-      <section className="section services-section" id="services">
-        <div className="section-heading">
-          <p className="eyebrow">Services</p>
-          <h2>Saubere Cuts, klare Linien und gepflegter Look</h2>
-        </div>
-        <div className="services-grid">
-          {services.map((service) => (
-            <ServiceCard key={service.id} service={service} />
-          ))}
         </div>
       </section>
 

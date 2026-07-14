@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, ChevronLeft, ChevronRight, Download, ImagePlus, LogOut, Plus, Save, Trash2 } from "lucide-react";
+import { Ban, ChevronLeft, ChevronRight, Download, ImagePlus, LogOut, Save, Trash2 } from "lucide-react";
 import {
   addGalleryImage,
   blockSlotRange,
@@ -12,16 +12,14 @@ import {
   getBookings,
   getGalleryImages,
   getHeroImage,
-  getServices,
   getSlots,
   saveHeroImage,
-  saveServices,
   unblockSlot,
 } from "../lib/storage";
 import { getAdminSession, loginAdmin, logoutAdmin, updateAdminProfile } from "../lib/auth";
-import type { AppointmentSlot, Booking, ServiceItem } from "../lib/types";
+import type { AppointmentSlot, Booking } from "../lib/types";
 
-type AdminSection = "slots" | "services" | "gallery" | "profile";
+type AdminSection = "slots" | "gallery" | "profile";
 type SlotViewFilter = "all" | "booked" | "blocked";
 
 const emptyBlockedTime = {
@@ -212,10 +210,8 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState("");
   const [blockError, setBlockError] = useState("");
   const [imageMessage, setImageMessage] = useState("");
-  const [serviceMessage, setServiceMessage] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
   const [profileError, setProfileError] = useState("");
-  const [serviceDrafts, setServiceDrafts] = useState<ServiceItem[]>([]);
   const [profileForm, setProfileForm] = useState(() => ({
     email: "",
     currentPassword: "",
@@ -234,7 +230,6 @@ export default function AdminPage() {
   });
   const { data: slots = [] } = useQuery({ queryKey: ["slots"], queryFn: getSlots });
   const { data: bookings = [] } = useQuery({ queryKey: ["bookings"], queryFn: getBookings });
-  const { data: services = [] } = useQuery({ queryKey: ["services"], queryFn: getServices });
   const { data: galleryImages = [] } = useQuery({ queryKey: ["galleryImages"], queryFn: getGalleryImages });
   const { data: heroImage } = useQuery({ queryKey: ["heroImage"], queryFn: getHeroImage });
   const blockedSlots = useMemo(
@@ -279,7 +274,6 @@ export default function AdminPage() {
   );
   const adminSections: Array<{ id: AdminSection; label: string }> = [
     { id: "slots", label: "Slots" },
-    { id: "services", label: "Services" },
     { id: "gallery", label: "Galerie" },
     { id: "profile", label: "Profil" },
   ];
@@ -309,10 +303,6 @@ export default function AdminPage() {
       active = false;
     };
   }, []);
-
-  useEffect(() => {
-    setServiceDrafts(services);
-  }, [services]);
 
   function updateBlockedListDate(date: string) {
     const selectedDate = new Date(`${date}T12:00:00`);
@@ -359,7 +349,6 @@ export default function AdminPage() {
       setProfileForm((current) => ({ ...current, email: profile.email }));
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["slots"] });
-      queryClient.invalidateQueries({ queryKey: ["services"] });
       queryClient.invalidateQueries({ queryKey: ["galleryImages"] });
       queryClient.invalidateQueries({ queryKey: ["heroImage"] });
     } catch (error) {
@@ -494,43 +483,6 @@ export default function AdminPage() {
       setImageMessage(error instanceof Error ? error.message : "Bild konnte nicht gespeichert werden.");
     } finally {
       setIsUploadingImage(false);
-    }
-  }
-
-  function updateServiceDraft(id: string, field: keyof Omit<ServiceItem, "id">, value: string) {
-    setServiceDrafts((current) => current.map((service) => (service.id === id ? { ...service, [field]: value } : service)));
-    setServiceMessage("");
-  }
-
-  function addServiceDraft() {
-    setServiceDrafts((current) => [
-      ...current,
-      {
-        id: `service-${crypto.randomUUID()}`,
-        title: "Neuer Service",
-        description: "Beschreibung folgt.",
-        duration: "30 Minuten",
-        price: "Preis auf Anfrage",
-      },
-    ]);
-    setServiceMessage("");
-  }
-
-  function removeServiceDraft(id: string) {
-    setServiceDrafts((current) => (current.length > 1 ? current.filter((service) => service.id !== id) : current));
-    setServiceMessage("");
-  }
-
-  async function saveServiceDrafts(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setServiceMessage("");
-
-    try {
-      await saveServices(serviceDrafts);
-      queryClient.invalidateQueries({ queryKey: ["services"] });
-      setServiceMessage("Services wurden gespeichert.");
-    } catch (error) {
-      setServiceMessage(error instanceof Error ? error.message : "Services konnten nicht gespeichert werden.");
     }
   }
 
@@ -844,73 +796,6 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
-      ) : null}
-
-      {activeSection === "services" ? (
-      <form className="form-panel service-admin-panel" onSubmit={saveServiceDrafts}>
-        <div className="panel-heading-actions">
-          <h2>Services bearbeiten</h2>
-          <div className="service-admin-actions">
-            <button type="button" className="secondary-button" onClick={addServiceDraft} disabled={serviceDrafts.length >= 6}>
-              <Plus size={18} />
-              Service
-            </button>
-            <button type="submit">
-              <Save size={18} />
-              Speichern
-            </button>
-          </div>
-        </div>
-        <div className="service-admin-list">
-          {serviceDrafts.map((service, index) => (
-            <article key={service.id} className="service-admin-card">
-              <div className="panel-heading-actions">
-                <h3>Service {index + 1}</h3>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => removeServiceDraft(service.id)}
-                  disabled={serviceDrafts.length <= 1}
-                >
-                  <Trash2 size={16} />
-                  Entfernen
-                </button>
-              </div>
-              <label>
-                Titel
-                <input value={service.title} onChange={(event) => updateServiceDraft(service.id, "title", event.target.value)} />
-              </label>
-              <label>
-                Beschreibung
-                <textarea
-                  value={service.description}
-                  rows={3}
-                  onChange={(event) => updateServiceDraft(service.id, "description", event.target.value)}
-                />
-              </label>
-              <div className="date-time-grid">
-                <label>
-                  Dauer
-                  <input
-                    value={service.duration}
-                    placeholder="15 Minuten"
-                    onChange={(event) => updateServiceDraft(service.id, "duration", event.target.value)}
-                  />
-                </label>
-                <label>
-                  Preis
-                  <input
-                    value={service.price}
-                    placeholder="ab 20 EUR"
-                    onChange={(event) => updateServiceDraft(service.id, "price", event.target.value)}
-                  />
-                </label>
-              </div>
-            </article>
-          ))}
-        </div>
-        {serviceMessage ? <p className={serviceMessage.includes("gespeichert") ? "success-message" : "error-message"}>{serviceMessage}</p> : null}
-      </form>
       ) : null}
 
       {activeSection === "gallery" ? (
