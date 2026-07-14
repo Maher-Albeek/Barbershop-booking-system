@@ -15,6 +15,7 @@ export type AppointmentSlot = {
 export type Booking = {
   id: string;
   slotId: string;
+  service: string;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
@@ -136,6 +137,13 @@ function generateSlots(persistedSlots: AppointmentSlot[]) {
 }
 
 function normalizeSiteData(value: Partial<SiteData> | null | undefined): SiteData {
+  const bookings = Array.isArray(value?.bookings)
+    ? value.bookings.map((booking) => ({
+        ...booking,
+        service: typeof booking.service === "string" && booking.service.trim() ? booking.service : "Termin",
+      }))
+    : [];
+
   return {
     ...emptySiteData(),
     ...value,
@@ -143,7 +151,7 @@ function normalizeSiteData(value: Partial<SiteData> | null | undefined): SiteDat
     galleryImages: Array.isArray(value?.galleryImages) ? value.galleryImages : [],
     services: Array.isArray(value?.services) && value.services.length > 0 ? value.services : defaultServices,
     slots: Array.isArray(value?.slots) ? value.slots : [],
-    bookings: Array.isArray(value?.bookings) ? value.bookings : [],
+    bookings,
   };
 }
 
@@ -195,7 +203,7 @@ export function createBooking(data: SiteData, input: Omit<Booking, "id" | "creat
     booking,
     data: {
       ...data,
-      slots: slots.map((item) => (item.id === input.slotId ? { ...item, status: "booked" as const } : item)),
+      slots: slots.map((item) => (item.id === input.slotId ? { ...item, service: input.service, status: "booked" as const } : item)),
       bookings: [...data.bookings, booking],
     },
   };

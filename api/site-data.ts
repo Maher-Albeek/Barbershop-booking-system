@@ -17,6 +17,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (req.method === "POST") {
       const body = (req.body ?? {}) as {
         slotId?: string;
+        service?: string;
         customerName?: string;
         customerEmail?: string;
         customerPhone?: string;
@@ -24,15 +25,17 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       };
 
       const slotId = body.slotId?.trim() ?? "";
+      const service = body.service?.trim() ?? "";
       const customerName = body.customerName?.trim() ?? "";
       const customerEmail = body.customerEmail?.trim() ?? "";
-      if (!slotId || customerName.length < 2 || !customerEmail.includes("@")) {
+      if (!slotId || !service || customerName.length < 2 || !customerEmail.includes("@")) {
         sendError(res, 400, "Bitte Buchungsdaten pruefen.");
         return;
       }
 
       const next = createBooking(data, {
         slotId,
+        service,
         customerName,
         customerEmail,
         customerPhone: body.customerPhone?.trim() || undefined,

@@ -13,6 +13,7 @@ export type AppointmentSlot = {
 export type Booking = {
   id: string;
   slotId: string;
+  service: string;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;

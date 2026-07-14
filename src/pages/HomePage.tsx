@@ -12,6 +12,7 @@ const bookingSchema = z.object({
   customerName: z.string().min(2, "Bitte vollständigen Namen eingeben."),
   customerEmail: z.string().email("Bitte gültige E-Mail eingeben."),
   customerPhone: z.string().optional(),
+  service: z.string().min(1, "Bitte einen Service waehlen."),
   slotId: z.string().min(1, "Bitte einen Termin wählen."),
   message: z.string().optional(),
   privacy: z.boolean().refine((value) => value, "Datenschutz muss akzeptiert werden."),
@@ -61,7 +62,7 @@ export default function HomePage() {
 
   const bookingForm = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
-    defaultValues: { customerName: "", customerEmail: "", customerPhone: "", slotId: "", message: "", privacy: false },
+    defaultValues: { customerName: "", customerEmail: "", customerPhone: "", service: "", slotId: "", message: "", privacy: false },
   });
 
   useEffect(() => {
@@ -74,6 +75,7 @@ export default function HomePage() {
     try {
       const booking = await createBooking({
         slotId: data.slotId,
+        service: data.service,
         customerName: data.customerName,
         customerEmail: data.customerEmail,
         customerPhone: data.customerPhone,
@@ -214,6 +216,18 @@ export default function HomePage() {
           <label>
             Phone
             <input {...bookingForm.register("customerPhone")} type="tel" placeholder="+49 ..." />
+          </label>
+          <label>
+            Service *
+            <select {...bookingForm.register("service")}>
+              <option value="">Service waehlen</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.title}>
+                  {service.title} - {service.price}
+                </option>
+              ))}
+            </select>
+            <small>{bookingForm.formState.errors.service?.message}</small>
           </label>
           <div className="date-time-grid">
             <label>

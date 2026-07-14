@@ -139,7 +139,8 @@ function buildBookingsPdf(bookings: Booking[], slots: AppointmentSlot[]) {
       content.push(`42 ${y} 511 50 re f`);
       content.push(`0.86 0.84 0.79 RG 42 ${y} 511 50 re S`);
       content.push(pdfText(booking.customerName, 56, y + 31, 10, "F2"));
-      content.push(pdfText(booking.message ? `Note: ${booking.message.slice(0, 36)}` : "No note", 56, y + 15, 8));
+      content.push(pdfText(`Service: ${booking.service || "Not selected"}`, 56, y + 18, 8));
+      content.push(pdfText(booking.message ? `Note: ${booking.message.slice(0, 30)}` : "No note", 56, y + 8, 8));
       content.push(pdfText(slot ? formatGermanDate(slot.date, slot.startTime) : "Slot deleted", 210, y + 31, 9));
       content.push(pdfText(slot?.startTime ? `${slot.startTime} Uhr` : "-", 318, y + 31, 9));
       content.push(pdfText(booking.customerEmail, 390, y + 31, 8));
@@ -790,6 +791,7 @@ export default function AdminPage() {
                     {isBooked ? (
                       <>
                         <span>Kundenbuchung{booking ? `: ${booking.customerName}` : ""}</span>
+                        {booking?.service ? <span>Service: {booking.service}</span> : null}
                         {booking?.customerEmail ? <span>{booking.customerEmail}</span> : null}
                       </>
                     ) : (
