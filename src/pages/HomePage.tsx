@@ -20,9 +20,7 @@ const bookingSchema = z.object({
 
 type BookingForm = z.infer<typeof bookingSchema>;
 
-const ferrofluidColors = ["#f2c19d", "#b4552d", "#79351f", "#f7f4ed"];
 const stackAnimationConfig = { stiffness: 260, damping: 24 };
-const Ferrofluid = lazy(() => import("../components/Ferrofluid"));
 const Stack = lazy(() => import("../components/Stack"));
 
 function useMediaQuery(query: string) {
@@ -121,10 +119,12 @@ const ServiceCard = memo(function ServiceCard({ service }: { service: ServiceIte
           <img src={serviceImage} alt="" loading="lazy" />
         </span>
       ) : null}
-      <span className="service-card-title">{service.title}</span>
+      <div className="service-card-copy">
+        <span className="service-card-title">{service.title}</span>
+        <p>{service.description}</p>
+      </div>
       <div className="service-card-details">
         <strong>{service.price}</strong>
-        <p>{service.description}</p>
         <span>Dauer</span> <span>{service.duration}</span>
       </div>
     </article>
@@ -136,7 +136,6 @@ export default function HomePage() {
   const [bookingNotice, setBookingNotice] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [galleryRef, isGalleryNearViewport] = useNearViewport<HTMLElement>();
-  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const isMobile = useMediaQuery("(max-width: 560px)");
   const { data: siteData } = useQuery({
     queryKey: ["publicSiteData"],
@@ -238,26 +237,6 @@ export default function HomePage() {
       </section>
 
       <div className="content-background">
-        {!isMobile && !prefersReducedMotion ? (
-          <Suspense fallback={null}>
-            <Ferrofluid
-              className="content-ferrofluid"
-              colors={ferrofluidColors}
-              dpr={1}
-              speed={0.28}
-              scale={1.55}
-              turbulence={0.82}
-              fluidity={0.2}
-              rimWidth={0.32}
-              sharpness={2.1}
-              shimmer={0.85}
-              glow={1.2}
-              flowDirection="down"
-              opacity={0.72}
-              mouseInteraction={false}
-            />
-          </Suspense>
-        ) : null}
         <div className="content-background-shade" aria-hidden="true" />
 
       <section className="info-band" aria-label="Standort und Öffnungszeiten">

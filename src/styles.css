@@ -8,8 +8,8 @@
   --muted: #667085;
   --line: #ddd8cc;
   --panel: #ffffff;
-  --accent: #b4552d;
-  --accent-dark: #79351f;
+  --accent: #D64B00;
+  --accent-dark: #D64B00;
   --green: #176b4d;
 }
 
@@ -172,7 +172,7 @@ a {
 }
 
 .hero .eyebrow {
-  color: #f8c8a8;
+  color: #D64B00;
 }
 
 h1,
@@ -321,7 +321,7 @@ p {
   height: 40px;
   flex: 0 0 40px;
   border-radius: 50%;
-  background: #3e3e3e;
+  background: var(--accent);
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
   transition: transform 0.25s ease;
 }
@@ -373,25 +373,20 @@ p {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: #0e0d0d;
+  background:
+    #0e0d0d url("/barber-shop-tools-arrangement.jpg") center top / cover no-repeat
+    scroll;
 }
 
-.content-ferrofluid,
 .content-background-shade {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-.content-ferrofluid {
-  z-index: 0;
-}
-
 .content-background-shade {
   z-index: 1;
-  background:
-    radial-gradient(circle at 20% 14%, rgba(126, 126, 126, 0.5), transparent 28%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.76), rgba(37, 37, 37, 0.9) 52%, rgba(85, 82, 75, 0.8));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.66), rgba(11, 11, 11, 0.78) 48%, rgba(0, 0, 0, 0.7));
 }
 
 .content-background > .info-band,
@@ -474,7 +469,7 @@ p {
   top: 30%;
   right: 7%;
   border-radius: 50%;
-  background-color: #fab5704c;
+  background-color: rgba(214, 75, 0, 0.3);
 }
 
 .service-card-image {
@@ -486,7 +481,7 @@ p {
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 50%;
-  background-color: rgba(250, 181, 112, 0.3);
+  background-color: rgba(214, 75, 0, 0.3);
   pointer-events: none;
 }
 
@@ -503,8 +498,8 @@ p {
   right: 5%;
   width: 7rem;
   height: 7rem;
-  background-color: rgba(250, 181, 112, 0.22);
-  box-shadow: 0 0 0 1px rgba(250, 181, 112, 0.26);
+  background-color: rgba(214, 75, 0, 0.22);
+  box-shadow: 0 0 0 1px rgba(214, 75, 0, 0.26);
 }
 
 .service-card-beard::before {
@@ -512,8 +507,8 @@ p {
   right: 5%;
   width: 7rem;
   height: 7rem;
-  background-color: rgba(250, 181, 112, 0.22);
-  box-shadow: 0 0 0 1px rgba(250, 181, 112, 0.26);
+  background-color: rgba(214, 75, 0, 0.22);
+  box-shadow: 0 0 0 1px rgba(214, 75, 0, 0.26);
 }
 
 .service-card-beard .service-card-image {
@@ -534,8 +529,8 @@ p {
   right: 5%;
   width: 7rem;
   height: 7rem;
-  background-color: rgba(250, 181, 112, 0.22);
-  box-shadow: 0 0 0 1px rgba(250, 181, 112, 0.26);
+  background-color: rgba(214, 75, 0, 0.22);
+  box-shadow: 0 0 0 1px rgba(214, 75, 0, 0.26);
 }
 
 .service-card-complete .service-card-image img {
@@ -555,14 +550,19 @@ p {
 
 .service-card:hover {
   border-color: rgba(255, 255, 255, 0.46);
-  box-shadow: 0 0 20px 1px #ffbb763f;
+  box-shadow: 0 0 20px 1px rgba(214, 75, 0, 0.25);
   transform: translateY(-2px);
 }
 
-.service-card-title,
+.service-card-copy,
 .service-card-details {
   position: relative;
   z-index: 1;
+}
+
+.service-card-copy {
+  display: grid;
+  gap: 0.65rem;
 }
 
 .service-card-title {
@@ -573,17 +573,19 @@ p {
   text-transform: uppercase;
 }
 
+.service-card-copy p {
+  max-width: 18ch;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: clamp(1rem, 1.7vw, 1.15rem);
+  font-style: italic;
+  font-weight: 400;
+}
+
 .service-card-details strong {
   display: block;
   margin-bottom: 0.5rem;
   color: #fff;
-}
-
-.service-card-details p {
-  margin: 0 0 0.7rem;
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 0.9rem;
-  font-weight: 300;
 }
 
 .service-card-details span {
@@ -1033,7 +1035,7 @@ p {
 .cookie-banner-links a:focus-visible,
 .site-footer button:focus-visible,
 .site-footer a:focus-visible {
-  outline: 3px solid rgba(180, 85, 45, 0.35);
+  outline: 3px solid rgba(214, 75, 0, 0.35);
   outline-offset: 3px;
 }
 
@@ -1436,7 +1438,7 @@ p {
 
 .blocked-calendar-day.is-selected {
   border-color: var(--accent);
-  background: rgba(180, 85, 45, 0.14);
+  background: rgba(214, 75, 0, 0.14);
   font-weight: 900;
 }
 
@@ -1986,10 +1988,6 @@ p {
     filter: none;
   }
 
-  .content-ferrofluid {
-    display: none;
-  }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2006,9 +2004,6 @@ p {
     transition-duration: 1ms !important;
   }
 
-  .content-ferrofluid {
-    display: none;
-  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -2020,8 +2015,8 @@ p {
     --muted: #b8b4aa;
     --line: #34302a;
     --panel: #1d1b18;
-    --accent: #d78352;
-    --accent-dark: #f1a978;
+    --accent: #D64B00;
+    --accent-dark: #D64B00;
     --green: #2f9d72;
   }
 
