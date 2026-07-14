@@ -99,8 +99,28 @@ const GalleryMasonryCard = memo(function GalleryMasonryCard({ image }: { image: 
 });
 
 const ServiceCard = memo(function ServiceCard({ service }: { service: ServiceItem }) {
+  const isHairService = service.id === "service-haircut";
+  const isBeardService = service.id === "service-beard";
+  const isCompleteService = service.id === "service-complete";
+  const serviceImage = isHairService
+    ? "/hair-service.avif"
+    : isBeardService
+      ? "/beard-service.avif"
+      : isCompleteService
+        ? "/complete-service.avif"
+        : "";
+
   return (
-    <article className="service-card">
+    <article
+      className={`service-card${isHairService ? " service-card-hair" : ""}${isBeardService ? " service-card-beard" : ""}${
+        isCompleteService ? " service-card-complete" : ""
+      }`}
+    >
+      {serviceImage ? (
+        <span className="service-card-image" aria-hidden="true">
+          <img src={serviceImage} alt="" loading="lazy" />
+        </span>
+      ) : null}
       <span className="service-card-title">{service.title}</span>
       <div className="service-card-details">
         <strong>{service.price}</strong>

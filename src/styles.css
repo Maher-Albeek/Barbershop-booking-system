@@ -477,6 +477,74 @@ p {
   background-color: #fab5704c;
 }
 
+.service-card-image {
+  position: absolute;
+  top: 28%;
+  right: 5%;
+  z-index: 0;
+  width: 7rem;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 50%;
+  background-color: rgba(250, 181, 112, 0.3);
+  pointer-events: none;
+}
+
+.service-card-image img {
+  width: 126%;
+  height: 126%;
+  object-fit: cover;
+  object-position: 48% 12%;
+  transform: translate(-10%, -9%);
+}
+
+.service-card-hair::before {
+  top: 28%;
+  right: 5%;
+  width: 7rem;
+  height: 7rem;
+  background-color: rgba(250, 181, 112, 0.22);
+  box-shadow: 0 0 0 1px rgba(250, 181, 112, 0.26);
+}
+
+.service-card-beard::before {
+  top: 28%;
+  right: 5%;
+  width: 7rem;
+  height: 7rem;
+  background-color: rgba(250, 181, 112, 0.22);
+  box-shadow: 0 0 0 1px rgba(250, 181, 112, 0.26);
+}
+
+.service-card-beard .service-card-image {
+  top: 28%;
+  right: 5%;
+  width: 7rem;
+}
+
+.service-card-beard .service-card-image img {
+  width: 112%;
+  height: 112%;
+  object-position: 44% 40%;
+  transform: translate(-6%, -6%);
+}
+
+.service-card-complete::before {
+  top: 28%;
+  right: 5%;
+  width: 7rem;
+  height: 7rem;
+  background-color: rgba(250, 181, 112, 0.22);
+  box-shadow: 0 0 0 1px rgba(250, 181, 112, 0.26);
+}
+
+.service-card-complete .service-card-image img {
+  width: 126%;
+  height: 126%;
+  object-position: 56% 42%;
+  transform: translate(-13%, -12%);
+}
+
 .service-card::after {
   width: 0;
   height: 3rem;
