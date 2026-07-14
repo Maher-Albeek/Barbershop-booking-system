@@ -442,18 +442,18 @@ p {
   min-height: 254px;
   overflow: hidden;
   padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.32);
   border-radius: 8px;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06)),
-    #2f343c;
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04)),
+    rgba(47, 52, 60, 0.46);
   color: #fff;
   box-shadow: 0 18px 45px rgba(37, 31, 21, 0.12);
   transition:
     border-color 0.3s ease,
     box-shadow 0.3s ease,
     transform 0.3s ease;
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px) saturate(1.18);
 }
 
 .service-card::before,
@@ -715,6 +715,12 @@ p {
 .form-panel {
   display: grid;
   gap: 14px;
+}
+
+.booking-layout .form-panel {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(246, 244, 239, 0.62);
+  backdrop-filter: blur(22px) saturate(1.12);
 }
 
 .form-panel label,
@@ -1825,6 +1831,10 @@ p {
     padding-inline: 20px 12px;
   }
 
+  .hero .primary-action::before {
+    top: 42%;
+  }
+
   .primary-action-text {
     font-size: 1.14rem;
   }
@@ -2058,6 +2068,11 @@ p {
 
   .delete-confirmation span {
     color: #f3b8b8;
+  }
+
+  .booking-layout .form-panel {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(29, 27, 24, 0.58);
   }
 
   .form-panel input,
