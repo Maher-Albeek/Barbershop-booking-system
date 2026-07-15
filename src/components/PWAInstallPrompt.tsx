@@ -26,13 +26,13 @@ export function PWAInstallPrompt() {
   }
 
   return (
-    <section className="pwa-install-toast" role="dialog" aria-live="polite" aria-label="Barber Booking installieren">
+    <section className="pwa-install-toast" role="dialog" aria-live="polite" aria-label="Adem Barber installieren">
       <div className="pwa-install-icon" aria-hidden="true">
         <Download size={22} />
       </div>
       <div className="pwa-install-copy">
-        <strong>Install Barber Booking</strong>
-        <p>Install Barber Booking for faster access.</p>
+        <strong>Install Adem Barber</strong>
+        <p>Install Adem Barber for faster access.</p>
       </div>
       <div className="pwa-install-actions">
         <button type="button" className="cookie-button cookie-button-accent" onClick={() => void promptInstallApp()}>

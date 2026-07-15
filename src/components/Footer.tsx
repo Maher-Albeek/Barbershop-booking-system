@@ -7,7 +7,7 @@ export const Footer = () => {
   return (
     <footer className="site-footer">
       <div>
-        <strong>Barber Booking</strong>
+        <strong>Adem Barber</strong>
         <p>Hauptstraße 12, 10115 Berlin · +49 30 123456 · info@barber-booking.de</p>
       </div>
       <nav aria-label="Footer Navigation">

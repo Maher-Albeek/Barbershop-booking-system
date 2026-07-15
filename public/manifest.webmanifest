@@ -1,6 +1,6 @@
 {
-  "name": "Barber Booking System",
-  "short_name": "Barber Booking",
+  "name": "Adem Barber",
+  "short_name": "Adem Barber",
   "description": "Terminbuchung, Galerie und Admin-Verwaltung fuer den Barbershop Adem.",
   "theme_color": "#f6f4ef",
   "background_color": "#f6f4ef",
@@ -28,14 +28,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Barber Booking desktop"
+      "label": "Adem Barber desktop"
     },
     {
       "src": "/screenshots/app-mobile.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Barber Booking mobile"
+      "label": "Adem Barber mobile"
     }
   ]
 }

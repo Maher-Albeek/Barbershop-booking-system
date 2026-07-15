@@ -12,7 +12,7 @@ export default function LegalPage({ type }: Props) {
       {isImpressum ? (
         <>
           <p>
-            Barber Booking Studio, Hauptstraße 12, 10115 Berlin. Vertreten durch Max Mustermann. Kontakt:
+            Adem Barber Studio, Hauptstraße 12, 10115 Berlin. Vertreten durch Max Mustermann. Kontakt:
             info@barber-booking.de, +49 30 123456.
           </p>
           <p>
