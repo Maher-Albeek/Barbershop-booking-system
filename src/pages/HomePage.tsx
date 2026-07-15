@@ -283,7 +283,7 @@ export default function HomePage() {
               <option value="">Service waehlen</option>
               {services.map((service) => (
                 <option key={service.id} value={service.title}>
-                  {service.title} - {service.price}
+                  {service.title}
                 </option>
               ))}
             </select>
