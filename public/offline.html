@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+    <title>Offline - Barber Booking</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #1b1f23;
+        background: #f6f4ef;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100dvh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background:
+          linear-gradient(135deg, rgba(214, 75, 0, 0.14), transparent 42%),
+          #f6f4ef;
+      }
+
+      main {
+        width: min(460px, 100%);
+        display: grid;
+        gap: 18px;
+        padding: 28px;
+        border: 1px solid #ddd8cc;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 22px 60px rgba(31, 27, 23, 0.14);
+      }
+
+      img {
+        width: 64px;
+        height: 64px;
+      }
+
+      h1,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(1.9rem, 8vw, 2.6rem);
+        line-height: 1.05;
+      }
+
+      p {
+        color: #667085;
+        font-size: 1.04rem;
+        line-height: 1.6;
+      }
+
+      button {
+        justify-self: start;
+        min-height: 46px;
+        padding: 10px 18px;
+        border: 0;
+        border-radius: 8px;
+        background: #d64b00;
+        color: #fff;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      button:focus-visible {
+        outline: 3px solid rgba(214, 75, 0, 0.35);
+        outline-offset: 3px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color: #f6f4ef;
+          background: #121212;
+        }
+
+        body {
+          background:
+            linear-gradient(135deg, rgba(214, 75, 0, 0.22), transparent 42%),
+            #121212;
+        }
+
+        main {
+          border-color: #3d352d;
+          background: rgba(29, 27, 24, 0.94);
+          box-shadow: none;
+        }
+
+        p {
+          color: #c7beb3;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192x192.png" alt="" width="64" height="64" />
+      <h1>Barber Booking</h1>
+      <p>No internet connection.</p>
+      <p>Previously loaded pages are still available.</p>
+      <button type="button" onclick="window.location.reload()">Retry</button>
+    </main>
+  </body>
+</html>

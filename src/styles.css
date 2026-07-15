@@ -8,8 +8,8 @@
   --muted: #667085;
   --line: #ddd8cc;
   --panel: #ffffff;
-  --accent: #D64B00;
-  --accent-dark: #D64B00;
+  --accent: #c84600;
+  --accent-dark: #b83f00;
   --green: #176b4d;
 }
 
@@ -1049,6 +1049,52 @@ p {
   font-size: 0.9rem;
 }
 
+.pwa-install-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 65;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: min(560px, calc(100vw - 40px));
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ink);
+  box-shadow: 0 18px 54px rgba(31, 27, 23, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.pwa-install-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #2f343c;
+  color: #fff;
+}
+
+.pwa-install-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pwa-install-copy p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.pwa-install-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .admin-login {
   min-height: 70vh;
   display: grid;
@@ -1544,6 +1590,18 @@ p {
     align-items: stretch;
   }
 
+  .pwa-install-toast {
+    left: 20px;
+    right: 20px;
+    width: auto;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .pwa-install-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
   .cookie-banner-actions,
   .cookie-modal-actions {
     justify-content: stretch;
@@ -1764,6 +1822,25 @@ p {
     padding: 16px;
   }
 
+  .pwa-install-toast {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    grid-template-columns: 1fr;
+    width: auto;
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+  }
+
+  .pwa-install-icon {
+    display: none;
+  }
+
+  .pwa-install-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .cookie-banner-actions,
   .cookie-modal-actions {
     display: grid;
@@ -1855,8 +1932,8 @@ p {
     --muted: #b8b4aa;
     --line: #34302a;
     --panel: #1d1b18;
-    --accent: #D64B00;
-    --accent-dark: #D64B00;
+    --accent: #ff8a3d;
+    --accent-dark: #ff9b5a;
     --green: #2f9d72;
   }
 
@@ -1873,7 +1950,8 @@ p {
   .cookie-consent-banner,
   .cookie-modal,
   .cookie-button,
-  .cookie-icon-button {
+  .cookie-icon-button,
+  .pwa-install-toast {
     background: #1d1b18;
     color: var(--ink);
   }
@@ -1957,7 +2035,18 @@ p {
     color: #121212;
   }
 
+  .primary-action,
+  .form-panel button[type="submit"],
+  .admin-media-form button[type="submit"] {
+    color: #121212;
+  }
+
   .cookie-button-secondary {
     background: #1d1b18;
+  }
+
+  .pwa-install-icon {
+    background: #f6f4ef;
+    color: #1d1b18;
   }
 }

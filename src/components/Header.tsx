@@ -7,7 +7,7 @@ export function Header() {
 
   return (
     <header className="site-header">
-      <Link to="/" className="brand" aria-label="Barber Booking System Startseite">
+      <Link to="/" className="brand" aria-label="Adem Startseite">
         <img className="brand-logo" src="/barbershop-barber.svg" alt="" aria-hidden="true" width="42" height="42" decoding="async" />
         <span>Adem</span>
       </Link>

@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App";
+import { registerServiceWorker } from "./pwa/register";
 import "./styles.css";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -42,3 +43,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 );
+
+registerServiceWorker();
