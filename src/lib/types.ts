@@ -8,7 +8,9 @@ export type AppointmentSlot = {
   service: string;
   status: SlotStatus;
   blockedReason?: string;
+  blockedStartDate?: string;
   blockedStartTime?: string;
+  blockedEndDate?: string;
   blockedEndTime?: string;
 };
 

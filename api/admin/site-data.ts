@@ -9,13 +9,16 @@ import {
 } from "../_siteData.js";
 import { requireAdmin, sendError, type ApiRequest, type ApiResponse } from "../_auth.js";
 
-function timeToMinutes(time: string) {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
 function isTime(value: string | undefined) {
   return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+function isDateKey(value: string | undefined): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T12:00:00`).getTime());
+}
+
+function getDateTimeValue(date: string, time: string) {
+  return new Date(`${date}T${time}:00`).getTime();
 }
 
 function rangesOverlap(startA: number, endA: number, startB: number, endB: number) {
@@ -116,7 +119,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       image?: Omit<SiteImage, "id" | "createdAt" | "label"> & { label?: string };
       services?: ServiceItem[];
       id?: string;
-      slot?: Pick<AppointmentSlot, "date" | "startTime"> & { endTime?: string; blockedReason?: string };
+      slot?: {
+        date?: string;
+        startDate?: string;
+        startTime?: string;
+        endDate?: string;
+        endTime?: string;
+        blockedReason?: string;
+      };
     };
 
     if (body.action === "saveHeroImage" && body.image?.src) {
@@ -174,25 +184,35 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       return;
     }
 
-    if (body.action === "blockSlotRange" && body.slot?.date && body.slot.startTime && body.slot.endTime) {
+    if (body.action === "blockSlotRange" && body.slot?.startTime && body.slot.endTime) {
+      const startDate = body.slot.startDate ?? body.slot.date;
+      const endDate = body.slot.endDate ?? startDate;
+      if (!isDateKey(startDate) || !isDateKey(endDate)) {
+        sendError(res, 400, "Datum ist ungueltig.");
+        return;
+      }
       if (!isTime(body.slot.startTime) || !isTime(body.slot.endTime)) {
         sendError(res, 400, "Uhrzeit ist ungueltig.");
         return;
       }
-      const startMinutes = timeToMinutes(body.slot.startTime);
-      const endMinutes = timeToMinutes(body.slot.endTime);
-      if (endMinutes <= startMinutes) {
+      const startValue = getDateTimeValue(startDate, body.slot.startTime);
+      const endValue = getDateTimeValue(endDate, body.slot.endTime);
+      if (endValue <= startValue) {
         sendError(res, 400, "Endzeit muss nach der Startzeit liegen.");
         return;
       }
       const publicData = getAdminSiteData(data);
-      const targetSlots = publicData.slots.filter(
-        (item) => {
-          const slotStart = timeToMinutes(item.startTime);
-          const slotEnd = slotStart + item.duration;
-          return item.date === body.slot?.date && item.status === "available" && rangesOverlap(slotStart, slotEnd, startMinutes, endMinutes);
-        },
-      );
+      const overlappingSlots = publicData.slots.filter((item) => {
+        const slotStart = getDateTimeValue(item.date, item.startTime);
+        const slotEnd = slotStart + item.duration * 60 * 1000;
+        return rangesOverlap(slotStart, slotEnd, startValue, endValue);
+      });
+      const occupiedSlots = overlappingSlots.filter((item) => item.status === "booked" || item.status === "blocked");
+      if (occupiedSlots.length > 0) {
+        sendError(res, 400, "Der Zeitraum enthaelt bereits gebuchte oder blockierte Termine.");
+        return;
+      }
+      const targetSlots = overlappingSlots.filter((item) => item.status === "available");
       const targetIds = new Set(targetSlots.map((item) => item.id));
       const nextSlots = publicData.slots.map((item) => {
         if (!targetIds.has(item.id)) return item;
@@ -200,7 +220,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
           ...item,
           status: "blocked" as const,
           blockedReason: body.slot?.blockedReason?.trim() || undefined,
+          blockedStartDate: startDate,
           blockedStartTime: body.slot?.startTime,
+          blockedEndDate: endDate,
           blockedEndTime: body.slot?.endTime,
         };
       });

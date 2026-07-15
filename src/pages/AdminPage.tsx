@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, ChevronLeft, ChevronRight, Download, ImagePlus, LogOut, Save, Trash2 } from "lucide-react";
+import { Ban, ChevronLeft, ChevronRight, Download, Eye, EyeOff, ImagePlus, LogOut, Save, Trash2 } from "lucide-react";
 import {
   addGalleryImage,
   blockSlotRange,
@@ -23,8 +23,9 @@ type AdminSection = "slots" | "gallery" | "profile";
 type SlotViewFilter = "all" | "booked" | "blocked";
 
 const emptyBlockedTime = {
-  date: new Date().toISOString().slice(0, 10),
+  startDate: new Date().toISOString().slice(0, 10),
   startTime: "09:00",
+  endDate: new Date().toISOString().slice(0, 10),
   endTime: "10:00",
   blockedReason: "",
 };
@@ -40,9 +41,22 @@ function rangesOverlap(startA: number, endA: number, startB: number, endB: numbe
 
 function getBlockedDisplayRange(slot: AppointmentSlot) {
   return {
+    startDate: slot.blockedStartDate ?? slot.date,
     startTime: slot.blockedStartTime ?? slot.startTime,
+    endDate: slot.blockedEndDate ?? slot.date,
     endTime: slot.blockedEndTime ?? addMinutes(slot.startTime, slot.duration),
   };
+}
+
+function getDateTimeValue(date: string, time: string) {
+  return new Date(`${date}T${time}:00`).getTime();
+}
+
+function formatBlockedRange(slot: AppointmentSlot) {
+  const range = getBlockedDisplayRange(slot);
+  const startLabel = `${formatGermanDate(range.startDate)} ${range.startTime}`;
+  const endLabel = `${formatGermanDate(range.endDate)} ${range.endTime}`;
+  return range.startDate === range.endDate ? `${range.startTime} - ${range.endTime}` : `${startLabel} - ${endLabel}`;
 }
 
 function addMinutes(time: string, duration: number) {
@@ -208,6 +222,7 @@ export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [activeSection, setActiveSection] = useState<AdminSection>("slots");
   const [loginError, setLoginError] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [blockError, setBlockError] = useState("");
   const [imageMessage, setImageMessage] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
@@ -220,7 +235,7 @@ export default function AdminPage() {
   }));
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [blockedTimeForm, setBlockedTimeForm] = useState(emptyBlockedTime);
-  const [blockedListDate, setBlockedListDate] = useState(emptyBlockedTime.date);
+  const [blockedListDate, setBlockedListDate] = useState(emptyBlockedTime.startDate);
   const [slotViewFilter, setSlotViewFilter] = useState<SlotViewFilter>("all");
   const [selectedBlockedSlotIds, setSelectedBlockedSlotIds] = useState<string[]>([]);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -383,37 +398,29 @@ export default function AdminPage() {
 
   async function saveBlockedTime(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const startMinutes = timeToMinutes(blockedTimeForm.startTime);
-    const endMinutes = timeToMinutes(blockedTimeForm.endTime);
-    if (endMinutes <= startMinutes) {
+    const startValue = getDateTimeValue(blockedTimeForm.startDate, blockedTimeForm.startTime);
+    const endValue = getDateTimeValue(blockedTimeForm.endDate, blockedTimeForm.endTime);
+    if (!Number.isFinite(startValue) || !Number.isFinite(endValue) || endValue <= startValue) {
       setBlockError("Endzeit muss nach der Startzeit liegen.");
       return;
     }
-    const existingBlockedSlots = blockedSlots.filter(
-      (slot) => {
-        const slotStart = timeToMinutes(slot.startTime);
-        return (
-          slot.date === blockedTimeForm.date &&
-          rangesOverlap(slotStart, slotStart + slot.duration, startMinutes, endMinutes)
-        );
-      },
-    );
+    const existingBlockedSlots = blockedSlots.filter((slot) => {
+      const slotStart = getDateTimeValue(slot.date, slot.startTime);
+      const slotEnd = slotStart + slot.duration * 60 * 1000;
+      return rangesOverlap(slotStart, slotEnd, startValue, endValue);
+    });
     if (existingBlockedSlots.length > 0) {
       const times = existingBlockedSlots
-        .map((slot) => {
-          const blockedRange = getBlockedDisplayRange(slot);
-          return `${blockedRange.startTime} - ${blockedRange.endTime}`;
-        })
+        .map((slot) => formatBlockedRange(slot))
         .join(", ");
       setBlockError(`Diese Zeit ist bereits blockiert: ${times}.`);
       return;
     }
-    const existingBookedSlots = bookedSlots.filter(
-      (slot) => {
-        const slotStart = timeToMinutes(slot.startTime);
-        return slot.date === blockedTimeForm.date && rangesOverlap(slotStart, slotStart + slot.duration, startMinutes, endMinutes);
-      },
-    );
+    const existingBookedSlots = bookedSlots.filter((slot) => {
+      const slotStart = getDateTimeValue(slot.date, slot.startTime);
+      const slotEnd = slotStart + slot.duration * 60 * 1000;
+      return rangesOverlap(slotStart, slotEnd, startValue, endValue);
+    });
     if (existingBookedSlots.length > 0) {
       const times = existingBookedSlots
         .map((slot) => {
@@ -432,7 +439,7 @@ export default function AdminPage() {
     }
 
     setBlockError("");
-    setBlockedTimeForm({ ...emptyBlockedTime, date: blockedTimeForm.date });
+    setBlockedTimeForm({ ...emptyBlockedTime, startDate: blockedTimeForm.startDate, endDate: blockedTimeForm.startDate });
     setSelectedBlockedSlotIds([]);
     setConfirmDeleteOpen(false);
     queryClient.invalidateQueries({ queryKey: ["slots"] });
@@ -509,7 +516,18 @@ export default function AdminPage() {
           </label>
           <label>
             Password
-            <input name="password" type="password" autoComplete="current-password" />
+            <span className="password-input-wrap">
+              <input name="password" type={showLoginPassword ? "text" : "password"} autoComplete="current-password" />
+              <button
+                type="button"
+                className="password-visibility-button"
+                aria-label={showLoginPassword ? "Passwort verbergen" : "Passwort anzeigen"}
+                aria-pressed={showLoginPassword}
+                onClick={() => setShowLoginPassword((current) => !current)}
+              >
+                {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </span>
           </label>
           <button type="submit">Login</button>
           {loginError && <p className="error-message">{loginError}</p>}
@@ -557,12 +575,16 @@ export default function AdminPage() {
         <form className="form-panel block-time-panel" onSubmit={saveBlockedTime}>
           <h2>Zeit blockieren</h2>
           <label>
-            Datum
+            Startdatum
             <input
               type="date"
-              value={blockedTimeForm.date}
+              value={blockedTimeForm.startDate}
               min={new Date().toISOString().slice(0, 10)}
-              onChange={(event) => setBlockedTimeForm({ ...blockedTimeForm, date: event.target.value })}
+              onChange={(event) => {
+                const startDate = event.target.value;
+                const endDate = blockedTimeForm.endDate < startDate ? startDate : blockedTimeForm.endDate;
+                setBlockedTimeForm({ ...blockedTimeForm, startDate, endDate });
+              }}
             />
           </label>
           <label>
@@ -575,9 +597,20 @@ export default function AdminPage() {
               onChange={(event) => {
                 const startTime = event.target.value;
                 const nextEndTime =
-                  timeToMinutes(blockedTimeForm.endTime) > timeToMinutes(startTime) ? blockedTimeForm.endTime : addMinutes(startTime, 1);
+                  blockedTimeForm.endDate > blockedTimeForm.startDate || timeToMinutes(blockedTimeForm.endTime) > timeToMinutes(startTime)
+                    ? blockedTimeForm.endTime
+                    : addMinutes(startTime, 1);
                 setBlockedTimeForm({ ...blockedTimeForm, startTime, endTime: nextEndTime });
               }}
+            />
+          </label>
+          <label>
+            Enddatum
+            <input
+              type="date"
+              value={blockedTimeForm.endDate}
+              min={blockedTimeForm.startDate}
+              onChange={(event) => setBlockedTimeForm({ ...blockedTimeForm, endDate: event.target.value })}
             />
           </label>
           <label>
@@ -594,21 +627,35 @@ export default function AdminPage() {
             <button
               type="button"
               className="secondary-button"
-              onClick={() => setBlockedTimeForm({ ...blockedTimeForm, endTime: addMinutesWithinDay(blockedTimeForm.startTime, 1) })}
+              onClick={() =>
+                setBlockedTimeForm({
+                  ...blockedTimeForm,
+                  endDate: blockedTimeForm.startDate,
+                  endTime: addMinutesWithinDay(blockedTimeForm.startTime, 1),
+                })
+              }
             >
               1 Minute
             </button>
             <button
               type="button"
               className="secondary-button"
-              onClick={() => setBlockedTimeForm({ ...blockedTimeForm, endTime: addMinutesWithinDay(blockedTimeForm.startTime, 120) })}
+              onClick={() =>
+                setBlockedTimeForm({
+                  ...blockedTimeForm,
+                  endDate: blockedTimeForm.startDate,
+                  endTime: addMinutesWithinDay(blockedTimeForm.startTime, 120),
+                })
+              }
             >
               2 Stunden
             </button>
             <button
               type="button"
               className="secondary-button"
-              onClick={() => setBlockedTimeForm({ ...blockedTimeForm, startTime: "00:00", endTime: "23:59" })}
+              onClick={() =>
+                setBlockedTimeForm({ ...blockedTimeForm, startTime: "00:00", endDate: blockedTimeForm.startDate, endTime: "23:59" })
+              }
             >
               Ganzer Tag
             </button>
@@ -757,7 +804,6 @@ export default function AdminPage() {
             {visibleOccupiedSlotsForSelectedDate.map((slot) => {
               const booking = bookingsBySlotId.get(slot.id);
               const isBooked = slot.status === "booked";
-              const blockedRange = getBlockedDisplayRange(slot);
               return (
                 <article key={slot.id} className={`slot-row ${isBooked ? "slot-row-booked" : "slot-row-blocked"}`}>
                   {isBooked ? (
@@ -778,7 +824,7 @@ export default function AdminPage() {
                   <div>
                     <strong>
                       {formatGermanDate(slot.date, slot.startTime)} -{" "}
-                      {isBooked ? `${slot.startTime} - ${addMinutes(slot.startTime, slot.duration)}` : `${blockedRange.startTime} - ${blockedRange.endTime}`}
+                      {isBooked ? `${slot.startTime} - ${addMinutes(slot.startTime, slot.duration)}` : formatBlockedRange(slot)}
                     </strong>
                     {isBooked ? (
                       <>

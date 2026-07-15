@@ -76,11 +76,6 @@ export function getWorkingTimes() {
   return workingTimes;
 }
 
-function timeToMinutes(time: string) {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
 async function apiRequest<T>(path: string, init?: RequestInit) {
   const response = await fetch(path, {
     credentials: "include",
@@ -257,10 +252,22 @@ export async function getSlots() {
   return (await getPublicSiteData()).slots;
 }
 
-export async function blockSlotRange(slot: Pick<AppointmentSlot, "date" | "startTime"> & { endTime: string; blockedReason?: string }) {
-  const startMinutes = timeToMinutes(slot.startTime);
-  const endMinutes = timeToMinutes(slot.endTime);
-  if (endMinutes <= startMinutes) return [];
+export type BlockSlotRangeInput = {
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  blockedReason?: string;
+};
+
+function getDateTimeValue(date: string, time: string) {
+  return new Date(`${date}T${time}:00`).getTime();
+}
+
+export async function blockSlotRange(slot: BlockSlotRangeInput) {
+  const startValue = getDateTimeValue(slot.startDate, slot.startTime);
+  const endValue = getDateTimeValue(slot.endDate, slot.endTime);
+  if (!Number.isFinite(startValue) || !Number.isFinite(endValue) || endValue <= startValue) return [];
 
   const response = await apiRequest<ChangedSlotsResponse>("/api/admin/site-data", {
     method: "PATCH",
