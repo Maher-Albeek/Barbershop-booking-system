@@ -1,4 +1,5 @@
 export type SlotStatus = "available" | "booked" | "blocked";
+export type BookingStatus = "booked" | "completed" | "cancelled" | "noShow";
 
 export type AppointmentSlot = {
   id: string;
@@ -23,6 +24,14 @@ export type Booking = {
   customerPhone?: string;
   message?: string;
   createdAt: string;
+  updatedAt?: string;
+  status: BookingStatus;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancellationReason?: string;
+  completedAt?: string;
+  noShowAt?: string;
+  updatedBy?: string;
 };
 
 export type SiteImage = {

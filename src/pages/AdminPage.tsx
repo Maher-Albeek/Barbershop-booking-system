@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, ChevronLeft, ChevronRight, Download, Eye, EyeOff, ImagePlus, LogOut, Save, Trash2 } from "lucide-react";
+import { AlertTriangle, Ban, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, EyeOff, ImagePlus, LogOut, Save, Trash2, XCircle } from "lucide-react";
 import {
   addGalleryImage,
   blockSlotRange,
@@ -15,12 +15,17 @@ import {
   getSlots,
   saveHeroImage,
   unblockSlot,
+  updateBookingStatus,
 } from "../lib/storage";
 import { getAdminSession, loginAdmin, logoutAdmin, updateAdminProfile } from "../lib/auth";
-import type { AppointmentSlot, Booking } from "../lib/types";
+import type { AppointmentSlot, Booking, BookingStatus } from "../lib/types";
 
 type AdminSection = "slots" | "gallery" | "profile";
-type SlotViewFilter = "all" | "booked" | "blocked";
+type SlotViewFilter = "all" | "booked" | "blocked" | "completed" | "cancelled" | "noShow";
+type AppointmentAction = "cancelled" | "completed" | "noShow";
+type AppointmentRow =
+  | { type: "slot"; slot: AppointmentSlot; booking?: Booking }
+  | { type: "cancelled"; booking: Booking; date: string; startTime: string };
 
 const emptyBlockedTime = {
   startDate: new Date().toISOString().slice(0, 10),
@@ -121,7 +126,31 @@ const slotFilterLabels: Record<SlotViewFilter, string> = {
   all: "Alle",
   booked: "Nur gebucht",
   blocked: "Nur blockiert",
+  completed: "Abgeschlossen",
+  cancelled: "Storniert",
+  noShow: "No Show",
 };
+
+const bookingStatusLabels: Record<BookingStatus, string> = {
+  booked: "Booked",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  noShow: "No Show",
+};
+
+const cancellationReasonOptions = ["Barber unavailable", "Vacation", "Emergency", "Other"];
+
+function getBookingStatus(booking?: Booking): BookingStatus {
+  return booking?.status ?? "booked";
+}
+
+function getBookingDate(slotId: string) {
+  return slotId.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+}
+
+function getBookingTime(slotId: string) {
+  return slotId.match(/^\d{4}-\d{2}-\d{2}-(\d{2}:\d{2})$/)?.[1] ?? "";
+}
 
 function buildSlotsPdf(slots: AppointmentSlot[], bookingsBySlotId: Map<string, Booking>, selectedDate: string, filter: SlotViewFilter) {
   const pageWidth = 595;
@@ -245,6 +274,12 @@ export default function AdminPage() {
   const [blockedTimeForm, setBlockedTimeForm] = useState(emptyBlockedTime);
   const [blockedListDate, setBlockedListDate] = useState(emptyBlockedTime.startDate);
   const [slotViewFilter, setSlotViewFilter] = useState<SlotViewFilter>("all");
+  const [appointmentSearch, setAppointmentSearch] = useState("");
+  const [appointmentMessage, setAppointmentMessage] = useState("");
+  const [appointmentError, setAppointmentError] = useState("");
+  const [pendingAppointmentId, setPendingAppointmentId] = useState<string | null>(null);
+  const [appointmentDialog, setAppointmentDialog] = useState<{ action: AppointmentAction; booking: Booking; slot?: AppointmentSlot } | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("");
   const [selectedBlockedSlotIds, setSelectedBlockedSlotIds] = useState<string[]>([]);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
@@ -289,11 +324,54 @@ export default function AdminPage() {
   const visibleOccupiedSlotsForSelectedDate = useMemo(
     () =>
       occupiedSlotsForSelectedDate.filter((slot) => {
-        if (slotViewFilter === "booked") return slot.status === "booked";
+        const bookingStatus = getBookingStatus(bookingsBySlotId.get(slot.id));
+        if (slotViewFilter === "booked") return slot.status === "booked" && bookingStatus === "booked";
         if (slotViewFilter === "blocked") return slot.status === "blocked";
+        if (slotViewFilter === "completed") return bookingStatus === "completed";
+        if (slotViewFilter === "noShow") return bookingStatus === "noShow";
+        if (slotViewFilter === "cancelled") return false;
         return true;
       }),
-    [occupiedSlotsForSelectedDate, slotViewFilter],
+    [bookingsBySlotId, occupiedSlotsForSelectedDate, slotViewFilter],
+  );
+  const cancelledAppointmentsForSelectedDate = useMemo(
+    () =>
+      bookings
+        .filter((booking) => getBookingStatus(booking) === "cancelled" && getBookingDate(booking.slotId) === blockedListDate)
+        .sort((a, b) => getBookingTime(a.slotId).localeCompare(getBookingTime(b.slotId))),
+    [blockedListDate, bookings],
+  );
+  const visibleAppointmentRows = useMemo(() => {
+    const rows: AppointmentRow[] = [
+      ...visibleOccupiedSlotsForSelectedDate.map((slot) => ({ type: "slot" as const, slot, booking: bookingsBySlotId.get(slot.id) })),
+      ...cancelledAppointmentsForSelectedDate.map((booking) => ({
+        type: "cancelled" as const,
+        booking,
+        date: getBookingDate(booking.slotId),
+        startTime: getBookingTime(booking.slotId),
+      })),
+    ];
+    const search = appointmentSearch.trim().toLowerCase();
+    return rows.filter((row) => {
+      if (slotViewFilter === "cancelled" && getBookingStatus(row.booking) !== "cancelled") return false;
+      if (!search) return true;
+      const booking = row.booking;
+      const date = row.type === "slot" ? row.slot.date : row.date;
+      return [
+        booking?.customerName,
+        booking?.customerEmail,
+        date,
+        booking ? bookingStatusLabels[getBookingStatus(booking)] : "Blocked",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(search);
+    });
+  }, [appointmentSearch, bookingsBySlotId, cancelledAppointmentsForSelectedDate, slotViewFilter, visibleOccupiedSlotsForSelectedDate]);
+  const visibleBookedCount = useMemo(
+    () => bookedSlotsForSelectedDate.filter((slot) => getBookingStatus(bookingsBySlotId.get(slot.id)) === "booked").length,
+    [bookedSlotsForSelectedDate, bookingsBySlotId],
   );
   const adminSections: Array<{ id: AdminSection; label: string }> = [
     { id: "slots", label: "Slots" },
@@ -357,6 +435,43 @@ export default function AdminPage() {
     setSelectedBlockedSlotIds([]);
     setConfirmDeleteOpen(false);
     queryClient.invalidateQueries({ queryKey: ["slots"] });
+  }
+
+  function openAppointmentDialog(action: AppointmentAction, booking: Booking, slot?: AppointmentSlot) {
+    setAppointmentMessage("");
+    setAppointmentError("");
+    setCancellationReason("");
+    setAppointmentDialog({ action, booking, slot });
+  }
+
+  async function confirmAppointmentAction() {
+    if (!appointmentDialog) return;
+    const { action, booking } = appointmentDialog;
+    setPendingAppointmentId(booking.id);
+    setAppointmentError("");
+    setAppointmentMessage("");
+
+    try {
+      const result = await updateBookingStatus({
+        bookingId: booking.id,
+        status: action,
+        cancellationReason: action === "cancelled" ? cancellationReason || undefined : undefined,
+      });
+      setAppointmentDialog(null);
+      queryClient.setQueryData(["bookings"], result.bookings);
+      queryClient.setQueryData(["slots"], result.slots);
+      if (action === "cancelled") {
+        setAppointmentMessage(
+          result.emailWarning ?? "Appointment cancelled successfully. Customer has been notified by email.",
+        );
+      } else {
+        setAppointmentMessage(action === "completed" ? "Appointment marked as completed." : "Appointment marked as no show.");
+      }
+    } catch (error) {
+      setAppointmentError(error instanceof Error ? error.message : "Aktion fehlgeschlagen.");
+    } finally {
+      setPendingAppointmentId(null);
+    }
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -579,6 +694,7 @@ export default function AdminPage() {
       </nav>
 
       {activeSection === "slots" ? (
+      <>
       <div className="admin-grid">
         <form className="form-panel block-time-panel" onSubmit={saveBlockedTime}>
           <h2>Zeit blockieren</h2>
@@ -758,7 +874,7 @@ export default function AdminPage() {
           <div className="slot-day-heading">
             <strong>{formatGermanDate(blockedListDate)}</strong>
             <span>
-              {blockedSlotsForSelectedDate.length} blockiert · {bookedSlotsForSelectedDate.length} gebucht
+              {blockedSlotsForSelectedDate.length} blockiert - {visibleBookedCount} gebucht - {cancelledAppointmentsForSelectedDate.length} storniert
             </span>
           </div>
           <div className="slot-filter-tabs" aria-label="Terminfilter">
@@ -766,6 +882,9 @@ export default function AdminPage() {
               { id: "all", label: "Alle" },
               { id: "booked", label: "Nur gebucht" },
               { id: "blocked", label: "Nur blockiert" },
+              { id: "completed", label: "Abgeschlossen" },
+              { id: "cancelled", label: "Storniert" },
+              { id: "noShow", label: "No Show" },
             ].map((filter) => (
               <button
                 key={filter.id}
@@ -781,6 +900,19 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
+          <label className="appointment-search">
+            Suche
+            <input
+              type="search"
+              value={appointmentSearch}
+              placeholder="Name, Email, Datum oder Status"
+              onChange={(event) => setAppointmentSearch(event.target.value)}
+            />
+          </label>
+          {appointmentMessage ? (
+            <p className={appointmentMessage.includes("could not") ? "warning-message" : "success-message"}>{appointmentMessage}</p>
+          ) : null}
+          {appointmentError ? <p className="error-message">{appointmentError}</p> : null}
           {slotViewFilter !== "booked" && blockedSlotsForSelectedDate.length > 0 ? (
             <div className="blocked-list-toolbar">
               <label className="slot-select-all">
@@ -813,15 +945,19 @@ export default function AdminPage() {
             </div>
           ) : null}
           <div className="table-list">
-            {visibleOccupiedSlotsForSelectedDate.length === 0 ? <p>Keine passenden Zeiten fuer dieses Datum.</p> : null}
-            {visibleOccupiedSlotsForSelectedDate.map((slot) => {
-              const booking = bookingsBySlotId.get(slot.id);
-              const isBooked = slot.status === "booked";
+            {visibleAppointmentRows.length === 0 ? <p>Keine passenden Termine fuer dieses Datum.</p> : null}
+            {visibleAppointmentRows.map((row) => {
+              const slot = row.type === "slot" ? row.slot : undefined;
+              const booking = row.booking;
+              const status = getBookingStatus(booking);
+              const isBooked = row.type === "slot" && row.slot.status === "booked";
+              const isBlocked = row.type === "slot" && row.slot.status === "blocked";
+              const rowDate = row.type === "slot" ? row.slot.date : row.date;
+              const rowStartTime = row.type === "slot" ? row.slot.startTime : row.startTime;
+              const rowKey = row.type === "slot" ? row.slot.id : `cancelled-${row.booking.id}`;
               return (
-                <article key={slot.id} className={`slot-row ${isBooked ? "slot-row-booked" : "slot-row-blocked"}`}>
-                  {isBooked ? (
-                    <span className="slot-status-dot slot-status-dot-booked" aria-label="Kundenbuchung" />
-                  ) : (
+                <article key={rowKey} className={`slot-row ${isBlocked ? "slot-row-blocked" : `slot-row-${status}`}`}>
+                  {isBlocked && slot ? (
                     <>
                       <label className="slot-select">
                         <input
@@ -833,28 +969,84 @@ export default function AdminPage() {
                       </label>
                       <span className="slot-status-dot slot-status-dot-blocked" aria-label="Blockierte Zeit" />
                     </>
+                  ) : (
+                    <span className={`slot-status-dot slot-status-dot-${status}`} aria-label={bookingStatusLabels[status]} />
                   )}
                   <div>
                     <strong>
-                      {formatGermanDate(slot.date, slot.startTime)} -{" "}
-                      {isBooked ? `${slot.startTime} - ${addMinutes(slot.startTime, slot.duration)}` : formatBlockedRange(slot)}
+                      {formatGermanDate(rowDate, rowStartTime)} -{" "}
+                      {isBooked && slot ? `${slot.startTime} - ${addMinutes(slot.startTime, slot.duration)}` : isBlocked && slot ? formatBlockedRange(slot) : rowStartTime}
                     </strong>
-                    {isBooked ? (
+                    {isBlocked && slot ? (
+                      <span>{slot.blockedReason ? `Grund: ${slot.blockedReason}` : "Fuer Kunden nicht buchbar"}</span>
+                    ) : booking ? (
                       <>
-                        <span>Kundenbuchung{booking ? `: ${booking.customerName}` : ""}</span>
+                        <span className={`status-badge status-badge-${status}`}>{bookingStatusLabels[status]}</span>
+                        <span>Kundenbuchung: {booking.customerName}</span>
                         {booking?.service ? <span>Service: {booking.service}</span> : null}
                         {booking?.customerEmail ? <span>{booking.customerEmail}</span> : null}
                       </>
-                    ) : (
-                      <span>{slot.blockedReason ? `Grund: ${slot.blockedReason}` : "Fuer Kunden nicht buchbar"}</span>
-                    )}
+                    ) : null}
                   </div>
+                  {booking && status === "booked" ? (
+                    <div className="row-actions appointment-actions">
+                      <button type="button" className="success-action" disabled={pendingAppointmentId === booking.id} onClick={() => openAppointmentDialog("completed", booking, slot)}>
+                        <CheckCircle2 size={16} />
+                        Completed
+                      </button>
+                      <button type="button" className="warning-action" disabled={pendingAppointmentId === booking.id} onClick={() => openAppointmentDialog("noShow", booking, slot)}>
+                        <AlertTriangle size={16} />
+                        No Show
+                      </button>
+                      <button type="button" className="danger-action" disabled={pendingAppointmentId === booking.id} onClick={() => openAppointmentDialog("cancelled", booking, slot)}>
+                        <XCircle size={16} />
+                        Cancel
+                      </button>
+                    </div>
+                  ) : null}
                 </article>
               );
             })}
           </div>
         </div>
       </div>
+      {appointmentDialog ? (
+        <div className="appointment-modal-backdrop" role="dialog" aria-modal="true">
+          <div className="appointment-modal">
+            <h2>{appointmentDialog.action === "cancelled" ? "Cancel Appointment?" : appointmentDialog.action === "noShow" ? "Customer did not arrive?" : "Mark appointment completed?"}</h2>
+            <dl>
+              <dt>Customer:</dt>
+              <dd>{appointmentDialog.booking.customerName}</dd>
+              <dt>Date:</dt>
+              <dd>{formatGermanDate(appointmentDialog.slot?.date ?? getBookingDate(appointmentDialog.booking.slotId), appointmentDialog.slot?.startTime ?? getBookingTime(appointmentDialog.booking.slotId))}</dd>
+              <dt>Time:</dt>
+              <dd>{appointmentDialog.slot?.startTime ?? getBookingTime(appointmentDialog.booking.slotId)}</dd>
+            </dl>
+            {appointmentDialog.action === "cancelled" ? (
+              <label>
+                Reason (optional)
+                <select value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)}>
+                  <option value="">No reason</option>
+                  {cancellationReasonOptions.map((reason) => (
+                    <option key={reason} value={reason}>
+                      {reason}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <div className="appointment-modal-actions">
+              <button type="button" className={appointmentDialog.action === "completed" ? "success-action" : appointmentDialog.action === "noShow" ? "warning-action" : "danger-action"} disabled={pendingAppointmentId === appointmentDialog.booking.id} onClick={confirmAppointmentAction}>
+                {pendingAppointmentId === appointmentDialog.booking.id ? "Saving..." : appointmentDialog.action === "cancelled" ? "Cancel Appointment" : "Confirm"}
+              </button>
+              <button type="button" className="secondary-button" disabled={pendingAppointmentId === appointmentDialog.booking.id} onClick={() => setAppointmentDialog(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      </>
       ) : null}
 
       {activeSection === "gallery" ? (

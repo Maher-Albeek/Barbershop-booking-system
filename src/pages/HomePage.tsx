@@ -5,13 +5,12 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { CheckCircle2, Clock, Mail, MapPin, MessageCircle, Scissors, ShieldCheck } from "lucide-react";
 import { ResponsiveImage } from "../components/ResponsiveImage";
-import { createBooking, defaultHeroImage, formatGermanDate, getPublicSiteData } from "../lib/storage";
+import { createBooking, defaultHeroImage, formatGermanDate, getPublicSiteData, getWorkingTimes } from "../lib/storage";
 import type { SiteImage } from "../lib/types";
 
 const bookingSchema = z.object({
   customerName: z.string().min(2, "Bitte vollständigen Namen eingeben."),
   customerEmail: z.string().email("Bitte gültige E-Mail eingeben."),
-  customerPhone: z.string().optional(),
   service: z.string().min(1, "Bitte einen Service waehlen."),
   slotId: z.string().min(1, "Bitte einen Termin wählen."),
   message: z.string().optional(),
@@ -22,6 +21,13 @@ type BookingForm = z.infer<typeof bookingSchema>;
 
 const stackAnimationConfig = { stiffness: 260, damping: 24 };
 const Stack = lazy(() => import("../components/Stack"));
+
+function isWeekdayDate(dateKey: string) {
+  const date = new Date(`${dateKey}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return false;
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
+}
 
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(() => (typeof window === "undefined" ? false : window.matchMedia(query).matches));
@@ -111,14 +117,43 @@ export default function HomePage() {
   const galleryImages = siteData?.galleryImages ?? [];
   const heroImage = siteData?.heroImage ?? null;
   const services = siteData?.services ?? [];
-  const availableSlots = useMemo(
-    () => slots.filter((slot) => slot.status === "available").sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)),
-    [slots],
-  );
   const bookableDates = useMemo(() => Array.from(new Set(slots.map((slot) => slot.date))).sort(), [slots]);
+  const dateAvailability = useMemo(
+    () =>
+      new Map(
+        bookableDates.map((date) => {
+          const daySlots = slots.filter((slot) => slot.date === date);
+          const availableCount = daySlots.filter((slot) => slot.status === "available").length;
+          return [
+            date,
+            {
+              availableCount,
+              isFullyBlocked: daySlots.length > 0 && availableCount === 0,
+            },
+          ];
+        }),
+      ),
+    [bookableDates, slots],
+  );
   const slotsForSelectedDate = useMemo(
-    () => availableSlots.filter((slot) => slot.date === selectedDate),
-    [availableSlots, selectedDate],
+    () => {
+      const matchingSlots = slots.filter((slot) => slot.date === selectedDate).sort((a, b) => a.startTime.localeCompare(b.startTime));
+      if (matchingSlots.length > 0 || !isWeekdayDate(selectedDate)) return matchingSlots;
+
+      return getWorkingTimes().map((startTime) => ({
+        id: `${selectedDate}-${startTime}`,
+        date: selectedDate,
+        startTime,
+        duration: 60,
+        service: "Termin",
+        status: "available" as const,
+      }));
+    },
+    [selectedDate, slots],
+  );
+  const availableSlotsForSelectedDate = useMemo(
+    () => slotsForSelectedDate.filter((slot) => slot.status === "available"),
+    [slotsForSelectedDate],
   );
   const galleryStackCards = useMemo(() => {
     if (galleryImages.length === 0) {
@@ -137,14 +172,15 @@ export default function HomePage() {
 
   const bookingForm = useForm<BookingForm>({
     resolver: zodResolver(bookingSchema),
-    defaultValues: { customerName: "", customerEmail: "", customerPhone: "", service: "", slotId: "", message: "", privacy: false },
+    defaultValues: { customerName: "", customerEmail: "", service: "", slotId: "", message: "", privacy: false },
   });
 
   useEffect(() => {
     if (bookableDates.length > 0 && (!selectedDate || !bookableDates.includes(selectedDate))) {
-      setSelectedDate(bookableDates[0]);
+      const firstAvailableDate = bookableDates.find((date) => (dateAvailability.get(date)?.availableCount ?? 0) > 0);
+      setSelectedDate(firstAvailableDate ?? bookableDates[0]);
     }
-  }, [bookableDates, selectedDate]);
+  }, [bookableDates, dateAvailability, selectedDate]);
 
   const updateSelectedDate = useCallback(
     (date: string) => {
@@ -161,7 +197,6 @@ export default function HomePage() {
         service: data.service,
         customerName: data.customerName,
         customerEmail: data.customerEmail,
-        customerPhone: data.customerPhone,
         message: data.message,
       });
       const slot = slots.find((item) => item.id === booking.slotId);
@@ -274,10 +309,6 @@ export default function HomePage() {
             <small>{bookingForm.formState.errors.customerEmail?.message}</small>
           </label>
           <label>
-            Phone
-            <input {...bookingForm.register("customerPhone")} type="tel" placeholder="+49 ..." />
-          </label>
-          <label>
             Service *
             <select {...bookingForm.register("service")}>
               <option value="">Service waehlen</option>
@@ -299,14 +330,35 @@ export default function HomePage() {
                 max={bookableDates[bookableDates.length - 1]}
                 onChange={(event) => updateSelectedDate(event.target.value)}
               />
+              <div className="public-date-grid" role="listbox" aria-label="Verfuegbare Tage">
+                {bookableDates.map((date) => {
+                  const availability = dateAvailability.get(date);
+                  const isFullyBlocked = availability?.isFullyBlocked ?? false;
+                  return (
+                    <button
+                      key={date}
+                      type="button"
+                      className={["public-date-button", date === selectedDate ? "is-selected" : "", isFullyBlocked ? "is-blocked" : ""]
+                        .filter(Boolean)
+                        .join(" ")}
+                      disabled={isFullyBlocked}
+                      aria-selected={date === selectedDate}
+                      onClick={() => updateSelectedDate(date)}
+                    >
+                      <span>{formatGermanDate(date)}</span>
+                      <small>{isFullyBlocked ? "Blockiert" : `${availability?.availableCount ?? 0} frei`}</small>
+                    </button>
+                  );
+                })}
+              </div>
             </label>
             <label>
               Time *
-              <select {...bookingForm.register("slotId")} disabled={!selectedDate || slotsForSelectedDate.length === 0}>
+              <select {...bookingForm.register("slotId")} disabled={!selectedDate || availableSlotsForSelectedDate.length === 0}>
                 <option value="">{slotsForSelectedDate.length > 0 ? "Uhrzeit wählen" : "Keine Termine"}</option>
                 {slotsForSelectedDate.map((slot) => (
-                  <option key={slot.id} value={slot.id}>
-                    {slot.startTime} Uhr
+                  <option key={slot.id} value={slot.status === "available" ? slot.id : ""} disabled={slot.status !== "available"}>
+                    {slot.startTime} Uhr{slot.status === "available" ? "" : " - blockiert"}
                   </option>
                 ))}
               </select>

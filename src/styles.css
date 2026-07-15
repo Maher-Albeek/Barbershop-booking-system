@@ -561,6 +561,57 @@ p {
   gap: 12px;
 }
 
+.public-date-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 2px;
+}
+
+.public-date-button {
+  display: grid;
+  gap: 3px;
+  min-height: 58px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #cfc8ba;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.public-date-button span {
+  font-weight: 900;
+}
+
+.public-date-button small {
+  min-height: 0;
+  color: var(--green);
+}
+
+.public-date-button.is-selected {
+  border-color: var(--accent);
+  background: rgba(214, 75, 0, 0.12);
+}
+
+.public-date-button.is-blocked,
+.public-date-button:disabled {
+  border-color: #d1d5db;
+  background: #e5e7eb;
+  color: #6b7280;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.public-date-button.is-blocked small,
+.public-date-button:disabled small {
+  color: #6b7280;
+}
+
 .form-panel input,
 .form-panel select,
 .form-panel textarea,
@@ -572,6 +623,11 @@ p {
   padding: 10px 12px;
   background: #fff;
   color: var(--ink);
+}
+
+.form-panel option:disabled {
+  background: #e5e7eb;
+  color: #6b7280;
 }
 
 .password-input-wrap {
@@ -1212,9 +1268,81 @@ p {
   box-shadow: 0 0 0 4px rgba(28, 100, 242, 0.14);
 }
 
+.slot-status-dot-completed {
+  background: #168a4a;
+  box-shadow: 0 0 0 4px rgba(22, 138, 74, 0.14);
+}
+
 .slot-status-dot-blocked {
   background: #bd0101;
   box-shadow: 0 0 0 4px rgba(189, 1, 1, 0.12);
+}
+
+.slot-status-dot-cancelled {
+  background: #eab308;
+  box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.18);
+}
+
+.slot-status-dot-noShow {
+  background: #6b7280;
+  box-shadow: 0 0 0 4px rgba(107, 114, 128, 0.16);
+}
+
+.status-badge {
+  display: inline-flex !important;
+  width: fit-content;
+  min-height: 26px;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.status-badge-booked {
+  background: #dbeafe;
+  color: #1d4ed8 !important;
+}
+
+.status-badge-completed {
+  background: #dcfce7;
+  color: #166534 !important;
+}
+
+.status-badge-cancelled {
+  background: #fef3c7;
+  color: #92400e !important;
+}
+
+.status-badge-noShow {
+  background: #e5e7eb;
+  color: #374151 !important;
+}
+
+.appointment-search {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 14px;
+  font-weight: 800;
+}
+
+.appointment-search input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #cfc8ba;
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.warning-message {
+  margin: 0 0 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 800;
 }
 
 .blocked-list-toolbar {
@@ -1453,7 +1581,34 @@ p {
   cursor: pointer;
 }
 
-.danger-action:disabled {
+.success-action,
+.warning-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.success-action {
+  border: 1px solid #168a4a;
+  background: #168a4a;
+  color: #fff;
+}
+
+.warning-action {
+  border: 1px solid #6b7280;
+  background: #6b7280;
+  color: #fff;
+}
+
+.danger-action:disabled,
+.success-action:disabled,
+.warning-action:disabled {
   cursor: not-allowed;
   opacity: 0.48;
 }
@@ -1503,6 +1658,78 @@ p {
   gap: 8px;
   align-items: center;
   flex: 0 0 auto;
+}
+
+.appointment-actions {
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.appointment-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(10, 13, 18, 0.58);
+}
+
+.appointment-modal {
+  display: grid;
+  gap: 16px;
+  width: min(440px, 100%);
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.appointment-modal h2 {
+  font-size: 1.45rem;
+}
+
+.appointment-modal dl {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.appointment-modal dt {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.appointment-modal dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.appointment-modal label {
+  display: grid;
+  gap: 7px;
+  font-weight: 800;
+}
+
+.appointment-modal select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #cfc8ba;
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.appointment-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .notification-box {
@@ -1986,6 +2213,9 @@ p {
   .form-panel select,
   .form-panel textarea,
   .admin-media-form input,
+  .public-date-button,
+  .appointment-search input,
+  .appointment-modal select,
   .slot-filter-tabs button {
     border-color: #4a4239;
     background: #25221e;
@@ -2005,6 +2235,14 @@ p {
 
   .blocked-calendar-day:disabled {
     color: #6f675e;
+  }
+
+  .public-date-button.is-blocked,
+  .public-date-button:disabled,
+  .form-panel option:disabled {
+    border-color: #4b5563;
+    background: #374151;
+    color: #9ca3af;
   }
 
   .site-header nav a,

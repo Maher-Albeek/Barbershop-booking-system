@@ -1,6 +1,7 @@
 import { redisCommand } from "./_auth.js";
 
 export type SlotStatus = "available" | "booked" | "blocked";
+export type BookingStatus = "booked" | "completed" | "cancelled" | "noShow";
 
 export type AppointmentSlot = {
   id: string;
@@ -25,6 +26,14 @@ export type Booking = {
   customerPhone?: string;
   message?: string;
   createdAt: string;
+  updatedAt?: string;
+  status: BookingStatus;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancellationReason?: string;
+  completedAt?: string;
+  noShowAt?: string;
+  updatedBy?: string;
 };
 
 export type SiteImage = {
@@ -145,6 +154,7 @@ function normalizeSiteData(value: Partial<SiteData> | null | undefined): SiteDat
     ? value.bookings.map((booking) => ({
         ...booking,
         service: typeof booking.service === "string" && booking.service.trim() ? booking.service : "Termin",
+        status: booking.status ?? "booked",
       }))
     : [];
 
@@ -190,7 +200,10 @@ export function getAdminSiteData(data: SiteData) {
   };
 }
 
-export function createBooking(data: SiteData, input: Omit<Booking, "id" | "createdAt">) {
+export function createBooking(
+  data: SiteData,
+  input: Pick<Booking, "slotId" | "service" | "customerName" | "customerEmail" | "customerPhone" | "message">,
+) {
   const slots = generateSlots(data.slots);
   const slot = slots.find((item) => item.id === input.slotId);
   if (!slot || slot.status !== "available") {
@@ -201,6 +214,8 @@ export function createBooking(data: SiteData, input: Omit<Booking, "id" | "creat
     ...input,
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    status: "booked",
   };
 
   return {

@@ -1,4 +1,4 @@
-import type { AppointmentSlot, Booking, ServiceItem, SiteImage } from "./types";
+import type { AppointmentSlot, Booking, BookingStatus, ServiceItem, SiteImage } from "./types";
 
 export const defaultHeroImage =
   "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&w=1800&q=82";
@@ -287,10 +287,21 @@ export async function getBookings() {
   return (await getAdminSiteData()).bookings;
 }
 
-export async function createBooking(input: Omit<Booking, "id" | "createdAt">) {
+export async function createBooking(input: Pick<Booking, "slotId" | "service" | "customerName" | "customerEmail" | "customerPhone" | "message">) {
   return apiRequest<Booking>("/api/site-data", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export type BookingStatusUpdateResult = AdminSiteData & {
+  emailWarning?: string;
+};
+
+export async function updateBookingStatus(input: { bookingId: string; status: Exclude<BookingStatus, "booked">; cancellationReason?: string }) {
+  return apiRequest<BookingStatusUpdateResult>("/api/admin/site-data", {
+    method: "PATCH",
+    body: JSON.stringify({ action: "updateBookingStatus", ...input }),
   });
 }
 

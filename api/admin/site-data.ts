@@ -4,6 +4,8 @@ import {
   getStoredSiteData,
   saveStoredSiteData,
   type AppointmentSlot,
+  type Booking,
+  type BookingStatus,
   type ServiceItem,
   type SiteImage,
 } from "../_siteData.js";
@@ -67,6 +69,112 @@ function normalizeServices(services: ServiceItem[]) {
   }));
 }
 
+const cancellationReasons = new Set(["Barber unavailable", "Vacation", "Emergency", "Other"]);
+
+function getBookingSlotDate(slotId: string) {
+  return slotId.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+}
+
+function getBookingSlotTime(slotId: string) {
+  return slotId.match(/^\d{4}-\d{2}-\d{2}-(\d{2}:\d{2})$/)?.[1] ?? "";
+}
+
+function formatEmailDate(date: string) {
+  if (!date) return "-";
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Berlin" }).format(
+    new Date(`${date}T12:00:00`),
+  );
+}
+
+async function sendCancellationEmail(booking: Booking, reason?: string) {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.BOOKING_EMAIL_FROM?.trim();
+  if (!apiKey || !from) {
+    throw new Error("Email provider is not configured.");
+  }
+
+  const date = formatEmailDate(getBookingSlotDate(booking.slotId));
+  const time = getBookingSlotTime(booking.slotId) || "-";
+  const text = [
+    `Hello ${booking.customerName},`,
+    "",
+    "Unfortunately your appointment has been cancelled.",
+    "",
+    "Appointment Details",
+    "",
+    "Date:",
+    date,
+    "",
+    "Time:",
+    time,
+    ...(reason ? ["", "Reason:", reason] : []),
+    "",
+    "Please visit our booking page to reserve another available appointment.",
+    "",
+    "We apologize for the inconvenience.",
+    "",
+    "Best regards,",
+    "Barber Shop",
+  ].join("\n");
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: booking.customerEmail,
+      subject: "Your Barber Appointment has been Cancelled",
+      text,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Email provider returned ${response.status}.`);
+  }
+}
+
+function updateBookingLifecycle(data: ReturnType<typeof getAdminSiteData>, bookingId: string, status: BookingStatus, adminEmail: string, reason?: string) {
+  const booking = data.bookings.find((item) => item.id === bookingId);
+  if (!booking) throw new Error("Termin wurde nicht gefunden.");
+
+  const currentStatus = booking.status ?? "booked";
+  if (currentStatus !== "booked") {
+    throw new Error("Dieser Termin kann nicht mehr geaendert werden.");
+  }
+  if (status === "booked") {
+    throw new Error("Status ist ungueltig.");
+  }
+
+  const now = new Date().toISOString();
+  const nextBooking: Booking = {
+    ...booking,
+    status,
+    updatedAt: now,
+    updatedBy: adminEmail,
+    ...(status === "cancelled"
+      ? {
+          cancelledAt: now,
+          cancelledBy: adminEmail,
+          cancellationReason: reason,
+        }
+      : {}),
+    ...(status === "completed" ? { completedAt: now } : {}),
+    ...(status === "noShow" ? { noShowAt: now } : {}),
+  };
+
+  return {
+    booking: nextBooking,
+    bookings: data.bookings.map((item) => (item.id === bookingId ? nextBooking : item)),
+    slots:
+      status === "cancelled"
+        ? data.slots.filter((slot) => slot.id !== booking.slotId || slot.status === "blocked")
+        : data.slots.map((slot) => (slot.id === booking.slotId ? { ...slot, status: "booked" as const } : slot)),
+  };
+}
+
 async function uploadImage(image: { src: string; label?: string; alt?: string }, folder: "hero" | "gallery") {
   const { mimeType, buffer } = dataUrlToBuffer(image.src);
   const extension = extensionFromMimeType(mimeType);
@@ -119,6 +227,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
       image?: Omit<SiteImage, "id" | "createdAt" | "label"> & { label?: string };
       services?: ServiceItem[];
       id?: string;
+      bookingId?: string;
+      status?: BookingStatus;
+      cancellationReason?: string;
       slot?: {
         date?: string;
         startDate?: string;
@@ -234,6 +345,33 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     if (body.action === "unblockSlot" && body.id) {
       const nextData = await saveStoredSiteData({ ...data, slots: data.slots.filter((slot) => slot.id !== body.id) });
       res.status(200).json(getAdminSiteData(nextData));
+      return;
+    }
+
+    if (body.action === "updateBookingStatus" && body.bookingId && body.status) {
+      if (!["completed", "cancelled", "noShow"].includes(body.status)) {
+        sendError(res, 400, "Status ist ungueltig.");
+        return;
+      }
+      const cancellationReason =
+        body.status === "cancelled" && body.cancellationReason && cancellationReasons.has(body.cancellationReason)
+          ? body.cancellationReason
+          : undefined;
+      const adminData = getAdminSiteData(data);
+      const next = updateBookingLifecycle(adminData, body.bookingId, body.status, profile.email, cancellationReason);
+      const nextData = await saveStoredSiteData({ ...data, bookings: next.bookings, slots: next.slots });
+
+      let emailWarning: string | undefined;
+      if (body.status === "cancelled") {
+        try {
+          await sendCancellationEmail(next.booking, cancellationReason);
+        } catch (error) {
+          console.error("Cancellation email failed", error);
+          emailWarning = "Appointment cancelled. Customer email could not be sent.";
+        }
+      }
+
+      res.status(200).json({ ...getAdminSiteData(nextData), emailWarning });
       return;
     }
 
