@@ -113,26 +113,32 @@ function sanitizePdfText(value: string) {
     .replace(/\)/g, "\\)");
 }
 
-function pdfText(value: string, x: number, y: number, size = 10, font = "F1") {
-  return `BT /${font} ${size} Tf ${x} ${y} Td (${sanitizePdfText(value)}) Tj ET`;
+function pdfText(value: string, x: number, y: number, size = 10, font = "F1", color = "0.13 0.10 0.08") {
+  return `${color} rg BT /${font} ${size} Tf ${x} ${y} Td (${sanitizePdfText(value)}) Tj ET`;
 }
 
-function buildBookingsPdf(bookings: Booking[], slots: AppointmentSlot[]) {
+const slotFilterLabels: Record<SlotViewFilter, string> = {
+  all: "Alle",
+  booked: "Nur gebucht",
+  blocked: "Nur blockiert",
+};
+
+function buildSlotsPdf(slots: AppointmentSlot[], bookingsBySlotId: Map<string, Booking>, selectedDate: string, filter: SlotViewFilter) {
   const pageWidth = 595;
   const pageHeight = 842;
   const margin = 42;
   const rowHeight = 58;
-  const bookingsByPage: Booking[][] = [];
-  let currentPage: Booking[] = [];
+  const slotsByPage: AppointmentSlot[][] = [];
+  let currentPage: AppointmentSlot[] = [];
 
-  bookings.forEach((booking) => {
+  slots.forEach((slot) => {
     if (currentPage.length === 10) {
-      bookingsByPage.push(currentPage);
+      slotsByPage.push(currentPage);
       currentPage = [];
     }
-    currentPage.push(booking);
+    currentPage.push(slot);
   });
-  bookingsByPage.push(currentPage);
+  slotsByPage.push(currentPage);
 
   const objects: string[] = [];
   const pages: number[] = [];
@@ -141,43 +147,45 @@ function buildBookingsPdf(bookings: Booking[], slots: AppointmentSlot[]) {
   objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
   objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
 
-  bookingsByPage.forEach((pageBookings, pageIndex) => {
+  slotsByPage.forEach((pageSlots, pageIndex) => {
     const content: string[] = [
       "0.96 0.94 0.9 rg 0 0 595 842 re f",
       "0.70 0.33 0.18 rg 0 782 595 60 re f",
-      pdfText("Adem Barbershop", margin, 812, 18, "F2"),
-      pdfText("Booking list", margin, 792, 11),
-      pdfText(`Generated: ${new Date().toLocaleDateString("de-DE")}`, 420, 812, 10),
+      pdfText("Adem Barbershop", margin, 812, 18, "F2", "1 1 1"),
+      pdfText(`Terminliste: ${formatGermanDate(selectedDate)}`, margin, 792, 11, "F1", "1 1 1"),
+      pdfText(`Generated: ${new Date().toLocaleDateString("de-DE")}`, 420, 812, 10, "F1", "1 1 1"),
+      pdfText(`Filter: ${slotFilterLabels[filter]}`, 420, 792, 10, "F1", "1 1 1"),
       "1 1 1 rg 42 724 511 34 re f",
       "0.86 0.84 0.79 RG 42 724 511 34 re S",
-      pdfText("Client", 56, 737, 10, "F2"),
+      pdfText("Status", 56, 737, 10, "F2"),
       pdfText("Date", 210, 737, 10, "F2"),
       pdfText("Time", 318, 737, 10, "F2"),
-      pdfText("Contact", 390, 737, 10, "F2"),
+      pdfText("Details", 390, 737, 10, "F2"),
     ];
 
-    if (bookings.length === 0) {
+    if (slots.length === 0) {
       content.push("1 1 1 rg 42 650 511 58 re f");
       content.push("0.86 0.84 0.79 RG 42 650 511 58 re S");
-      content.push(pdfText("No bookings yet.", 56, 680, 12, "F2"));
+      content.push(pdfText("Keine passenden Zeiten fuer dieses Datum.", 56, 680, 12, "F2"));
     }
 
-    pageBookings.forEach((booking, index) => {
+    pageSlots.forEach((slot, index) => {
       const y = 666 - index * rowHeight;
-      const slot = slots.find((item) => item.id === booking.slotId);
+      const booking = bookingsBySlotId.get(slot.id);
+      const isBooked = slot.status === "booked";
       content.push(index % 2 === 0 ? "1 1 1 rg" : "0.985 0.98 0.965 rg");
       content.push(`42 ${y} 511 50 re f`);
       content.push(`0.86 0.84 0.79 RG 42 ${y} 511 50 re S`);
-      content.push(pdfText(booking.customerName, 56, y + 31, 10, "F2"));
-      content.push(pdfText(`Service: ${booking.service || "Not selected"}`, 56, y + 18, 8));
-      content.push(pdfText(booking.message ? `Note: ${booking.message.slice(0, 30)}` : "No note", 56, y + 8, 8));
-      content.push(pdfText(slot ? formatGermanDate(slot.date, slot.startTime) : "Slot deleted", 210, y + 31, 9));
-      content.push(pdfText(slot?.startTime ? `${slot.startTime} Uhr` : "-", 318, y + 31, 9));
-      content.push(pdfText(booking.customerEmail, 390, y + 31, 8));
-      content.push(pdfText(booking.customerPhone || "-", 390, y + 16, 8));
+      content.push(pdfText(isBooked ? "Gebucht" : "Blockiert", 56, y + 31, 10, "F2", isBooked ? "0.08 0.28 0.55" : "0.63 0.16 0.16"));
+      content.push(pdfText(isBooked && booking ? booking.customerName : "Fuer Kunden gesperrt", 56, y + 18, 8));
+      content.push(pdfText(isBooked && booking?.service ? `Service: ${booking.service}` : "", 56, y + 8, 8));
+      content.push(pdfText(formatGermanDate(slot.date, slot.startTime), 210, y + 31, 9));
+      content.push(pdfText(`${slot.startTime} - ${isBooked ? addMinutes(slot.startTime, slot.duration) : getBlockedDisplayRange(slot).endTime}`, 318, y + 31, 9));
+      content.push(pdfText(isBooked ? booking?.customerEmail ?? "-" : slot.blockedReason ? `Grund: ${slot.blockedReason}` : "Kein Grund angegeben", 390, y + 31, 8));
+      content.push(pdfText(isBooked ? booking?.customerPhone ?? "-" : formatBlockedRange(slot), 390, y + 16, 8));
     });
 
-    content.push(pdfText(`Page ${pageIndex + 1} / ${bookingsByPage.length}`, 488, 32, 9));
+    content.push(pdfText(`Page ${pageIndex + 1} / ${slotsByPage.length}`, 488, 32, 9));
 
     const contentStream = content.join("\n");
     const contentObjectNumber = objects.length + 1;
@@ -682,7 +690,12 @@ export default function AdminPage() {
             <button
               type="button"
               className="secondary-button"
-              onClick={() => downloadBlob(buildBookingsPdf(bookings, slots), `barbershop-bookings-${new Date().toISOString().slice(0, 10)}.pdf`)}
+              onClick={() =>
+                downloadBlob(
+                  buildSlotsPdf(visibleOccupiedSlotsForSelectedDate, bookingsBySlotId, blockedListDate, slotViewFilter),
+                  `barbershop-${slotViewFilter}-${blockedListDate}.pdf`,
+                )
+              }
             >
               <Download size={16} />
               PDF herunterladen
